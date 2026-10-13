@@ -18,7 +18,7 @@ export default function Home() {
         >
           <p className="text-sm text-muted">תלמידים · طلاب</p>
           <h2 className="mt-1 text-2xl font-semibold">כניסה למשימות</h2>
-          <p className="mt-2 text-sm text-muted">עם קוד הכיתה וכינוי. بدخول برمز الصف واسم مستعار.</p>
+          <p className="mt-2 text-sm text-muted">עם קוד הכיתה והשם שלך. بالدخول برمز الصف واسمك.</p>
           <span className="mt-4 inline-block text-sm font-medium text-accent group-hover:underline">להתחיל ←</span>
         </Link>
         <Link

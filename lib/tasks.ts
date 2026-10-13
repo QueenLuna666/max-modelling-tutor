@@ -18,11 +18,14 @@ export type Phase = {
   compliment: string;
 };
 
+export type TaskCardText = { title: string; definition: string; image_alt: string; points: string[]; question: string };
+
 export type Task = {
   id: string;
   title: Localized;
   statement: Localized;
   image?: string;
+  card?: { image?: string } & Partial<Record<Lang, TaskCardText>>;
   givens: Record<string, number>;
   context_for_tutor?: string[]; // background MAX may rely on (never pasted to the student as-is)
   reference: { path: string; [k: string]: unknown };
@@ -66,6 +69,7 @@ export function publicTask(task: Task, lang: Lang) {
     title: t(task.title, lang),
     statement: t(task.statement, lang),
     image: task.image ?? null,
+    card: task.card ? { image: task.card.image ?? null, ...(task.card[lang] ?? task.card.he ?? null) } : null,
     phases: task.phases.map((p) => ({ id: p.id, label: t(p.label, lang) })),
   };
 }

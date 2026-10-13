@@ -216,5 +216,38 @@
       },
       "compliment": "Excellent validation — you are not just calculating, you are judging whether the model makes sense."
     }
-  ]
+  ],
+  "card": {
+    "image": "/tasks/speedometer-wheel.png",
+    "he": {
+      "title": "ספידומטר",
+      "definition": "**מד מהירות-ספידומטר** הוא מכשיר שמודד ומציג את מהירות הנסיעה של רכב.\nמהירות הרכב כפי שמוצגת על לוח המחוונים היא: מספר ה**קילומטרים** שנוסע הרכב במשך **שעה** אחת.",
+      "image_alt": "גלגל, חישוק, ציר, גלגל שיניים וחיישן",
+      "points": [
+        "**הקוטר החיצוני** של הגלגל מאפשר לחשב את **היקף הגלגל**, שהוא המרחק שעובר הגלגל בסיבוב אחד.",
+        "**מספר השיניים** שעברו מול החיישן האלקטרוני במהלך דקה אחת מאפשר לספידומטר לחשב את **מספר הסיבובים** שביצע הגלגל בדקה זו."
+      ],
+      "question": "במהלך נסיעתה של מכונית, מנה החיישן של הספידומטר 38,400 שיניים במשך דקה אחת. **באיזו מהירות נסעה המכונית ביחידות של קילומטרים לשעה?**"
+    },
+    "ar": {
+      "title": "عدّاد السرعة",
+      "definition": "**عدّاد السرعة (سبيدومتر)** هو جهاز يقيس سرعة السيارة ويعرضها.\nسرعة السيارة كما تظهر على لوحة العدّادات هي: عدد **الكيلومترات** التي تقطعها السيارة خلال **ساعة** واحدة.",
+      "image_alt": "عجلة، إطار معدني، محور، ترس وحسّاس",
+      "points": [
+        "**القطر الخارجي** للعجلة يتيح حساب **محيط العجلة**، وهو المسافة التي تقطعها العجلة في دورة واحدة.",
+        "**عدد الأسنان** التي مرّت أمام الحسّاس الإلكتروني خلال دقيقة واحدة يتيح لعدّاد السرعة حساب **عدد الدورات** التي قامت بها العجلة في هذه الدقيقة."
+      ],
+      "question": "خلال سفر سيارة، عدّ حسّاس عدّاد السرعة 38,400 سنًّا خلال دقيقة واحدة. **ما هي سرعة السيارة بوحدات الكيلومتر في الساعة؟**"
+    },
+    "en": {
+      "title": "Speedometer",
+      "definition": "A **speedometer** is a device that measures and shows a vehicle's speed.\nThe speed shown on the dashboard is the number of **kilometres** the vehicle travels in one **hour**.",
+      "image_alt": "Wheel, rim, axle, toothed gear and sensor",
+      "points": [
+        "The wheel's **outer diameter** lets you calculate the **wheel's circumference**, which is the distance the wheel travels in one rotation.",
+        "The **number of teeth** that passed the electronic sensor during one minute lets the speedometer calculate the **number of rotations** the wheel made in that minute."
+      ],
+      "question": "While a car was driving, the speedometer's sensor counted 38,400 teeth in one minute. **At what speed was the car travelling, in kilometres per hour?**"
+    }
+  }
 }

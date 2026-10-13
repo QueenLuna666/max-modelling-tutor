@@ -85,8 +85,8 @@ function ClassView({ d, researcher }: { d: Dashboard; researcher: boolean }) {
           )}
           {researcher && (
             <>
-              <a href={`/api/staff/export?classId=${d.class.id}&format=csv`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
-                קובץ ניתוח (Excel/CSV)
+              <a href={`/api/staff/export?classId=${d.class.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
+                קובץ מחקר (Excel)
               </a>
               <a href={`/api/staff/export?classId=${d.class.id}&format=json`} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:bg-surface">
                 JSON

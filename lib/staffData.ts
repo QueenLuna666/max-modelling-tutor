@@ -4,6 +4,7 @@ import { supabaseAdmin } from "./supabase";
 import { canSeeClass, isResearcher, type StaffSession } from "./auth";
 import { getTask, t, type Lang } from "./tasks";
 import { codeLabels } from "./framework";
+import { sessionMetrics, type SessionMetrics } from "./metrics";
 import {
   buildJourney,
   sessionAlerts,
@@ -220,6 +221,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
     phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
     challengeLabels: codeLabels(),
     journey: buildJourney(phaseIds, messages, annotations),
+    metrics: sessionMetrics(phaseIds, messages, annotations),
     alerts: sessionAlerts(s.status, messages, annotations, phaseIds[phaseIds.length - 1] ?? ""),
     messages: messages.map((m) => {
       const a = m.role === "student" ? byMsg.get(m.id) : undefined;
@@ -261,8 +263,26 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
   };
 }
 
-// One row per message, with the analysis joined in. Researchers only.
-export async function exportRows(staff: StaffSession, filter: { classId?: string; sessionId?: string }) {
+// Everything a researcher needs about a class or one session: per-session info, metrics,
+// per-phase metrics and the coded conversation. Researchers only. Formatted by lib/exportFile.ts.
+export type ExportSession = {
+  sessionId: string;
+  classCode: string;
+  name: string;
+  taskId: string;
+  taskTitle: string;
+  lang: string;
+  gender: string;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  phases: { id: string; label: string }[];
+  metrics: SessionMetrics;
+  journey: { index: number; phase: string; back: boolean; at: string }[];
+  messages: (MessageRow & { analysis: AnnotationRow | null })[];
+};
+
+export async function exportData(staff: StaffSession, filter: { classId?: string; sessionId?: string }) {
   if (!isResearcher(staff)) return { error: 403 as const };
   const db = supabaseAdmin();
 
@@ -283,61 +303,49 @@ export async function exportRows(staff: StaffSession, filter: { classId?: string
   } else {
     return { error: 400 as const };
   }
-  if (!sessionIds.length) return { rows: [], name: classCode || "export" };
+  if (!sessionIds.length) return { sessions: [] as ExportSession[], name: classCode || "export" };
 
   const { data: sessions } = await db
     .from("sessions")
     .select("id, task_id, lang, gender, status, started_at, ended_at, students(nickname, classes(code))")
-    .in("id", sessionIds);
+    .in("id", sessionIds)
+    .order("started_at", { ascending: true });
   const messages = await fetchAll<MessageRow & { session_id: string }>((from, to) =>
     db.from("messages").select(MSG_COLS).in("session_id", sessionIds).order("created_at", { ascending: true }).range(from, to),
   );
   const annotations = await fetchAll<AnnotationRow & { session_id: string }>((from, to) =>
-    db.from("annotations").select(ANN_COLS).in("session_id", sessionIds).range(from, to),
-  );
-  const byMsg = new Map(annotations.map((a) => [a.message_id, a]));
-  const info = new Map(
-    (sessions ?? []).map((s) => {
-      // Supabase types nested selects loosely; read them defensively.
-      const st = s.students as unknown as { nickname?: string; classes?: { code?: string } } | null;
-      return [s.id, { ...s, nickname: st?.nickname ?? "", classCode: st?.classes?.code ?? classCode }];
-    }),
+    db.from("annotations").select(ANN_COLS).in("session_id", sessionIds).order("created_at", { ascending: true }).range(from, to),
   );
 
-  const counter = new Map<string, number>();
-  const rows = messages.map((m) => {
-    const s = info.get(m.session_id);
-    const n = (counter.get(m.session_id) ?? 0) + 1;
-    counter.set(m.session_id, n);
-    const a = byMsg.get(m.id);
+  const out: ExportSession[] = (sessions ?? []).map((s) => {
+    // Supabase types nested selects loosely; read them defensively.
+    const st = s.students as unknown as { nickname?: string; classes?: { code?: string } } | null;
+    const task = getTask(s.task_id);
+    const phaseIds = task?.phases.map((p) => p.id) ?? [];
+    const msgs = messages.filter((m) => m.session_id === s.id);
+    const anns = annotations.filter((a) => a.session_id === s.id);
+    const byMsg = new Map(anns.map((a) => [a.message_id, a]));
+    const journey = buildJourney(phaseIds, msgs, anns);
     return {
-      class_code: s?.classCode ?? "",
-      nickname: s?.nickname ?? "",
-      session_id: m.session_id,
-      task_id: s?.task_id ?? "",
-      lang: s?.lang ?? "",
-      gender: s?.gender ?? "",
-      session_status: s?.status ?? "",
-      message_no: n,
-      message_id: m.id,
-      created_at: m.created_at,
-      role: m.role,
-      content: m.content,
-      session_phase: m.phase ?? "",
-      word_count: m.word_count ?? "",
-      response_sec: m.response_ms == null ? "" : Math.round(m.response_ms / 1000),
-      coded_phase: a?.phase ?? "",
-      performance: a?.performance ?? "",
-      motivation: a?.motivation ?? "",
-      challenge: a?.challenge ?? "",
-      skills: a?.skills?.join(" ") ?? "",
-      evidence: a?.evidence ?? "",
-      asks_for_answer: a ? String(a.asks_for_answer) : "",
-      phase_complete: a ? String(a.phase_complete) : "",
-      tutor_hint_level: m.hint_level ?? "",
-      tutor_scaffold_type: m.scaffold_type ?? "",
-      tutor_move: m.move ?? "",
+      sessionId: s.id,
+      classCode: st?.classes?.code ?? classCode,
+      name: st?.nickname ?? "",
+      taskId: s.task_id,
+      taskTitle: task ? t(task.title, "he") : s.task_id,
+      lang: s.lang,
+      gender: s.gender,
+      status: s.status,
+      startedAt: s.started_at,
+      endedAt: s.ended_at,
+      phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
+      metrics: sessionMetrics(phaseIds, msgs, anns),
+      journey: journey.points.map((p) => ({ index: p.index, phase: p.phase, back: p.back, at: p.at })),
+      messages: msgs.map((m) => ({ ...m, analysis: m.role === "student" ? (byMsg.get(m.id) ?? null) : null })),
     };
   });
-  return { rows, name: filter.sessionId ? `session-${filter.sessionId.slice(0, 8)}` : `class-${classCode}` };
+  const first = out[0];
+  return {
+    sessions: out,
+    name: filter.sessionId && first ? `${first.name}-${first.sessionId.slice(0, 8)}` : `class-${classCode}`,
+  };
 }

@@ -24,14 +24,14 @@ export async function POST(req: Request) {
   const lang: Lang = LANGS.includes(body.lang as Lang) ? (body.lang as Lang) : "he";
 
   if (!classCode || !nickname) {
-    return NextResponse.json({ error: "צריך קוד כיתה וכינוי" }, { status: 400 });
+    return NextResponse.json({ error: "צריך קוד כיתה ושם" }, { status: 400 });
   }
   if (!GENDERS.includes(body.gender as Gender)) {
     return NextResponse.json({ error: "צריך לבחור איך לפנות אליך: בן או בת" }, { status: 400 });
   }
   const gender = body.gender as Gender;
   if (nickname.length > 30) {
-    return NextResponse.json({ error: "הכינוי ארוך מדי (עד 30 תווים)" }, { status: 400 });
+    return NextResponse.json({ error: "השם ארוך מדי (עד 30 תווים)" }, { status: 400 });
   }
 
   const task = getTask(taskId);

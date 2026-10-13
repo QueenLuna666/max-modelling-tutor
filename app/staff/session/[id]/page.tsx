@@ -41,6 +41,29 @@ type Detail = {
     backMoves: { from: string; to: string; index: number }[];
     furthestIndex: number;
   };
+  metrics: {
+    studentMessages: number;
+    minutesTotal: number;
+    avgWords: number;
+    avgResponseSec: number | null;
+    shortAnswers: number;
+    asksForAnswer: number;
+    difficultiesTotal: number;
+    difficultyDiversity: number;
+    skillDiversity: number;
+    backMoves: number;
+    hints: { light: number; medium: number; strong: number };
+    perPhase: {
+      phase: string;
+      visits: number;
+      studentMessages: number;
+      minutes: number;
+      difficulties: number;
+      difficultyCodes: string[];
+      skillCodes: string[];
+      completed: boolean;
+    }[];
+  };
   alerts: { kind: string; text: string; severity: "warn" | "info" }[];
   messages: Message[];
   siblings: { id: string; taskTitle: string; status: string; startedAt: string }[];
@@ -95,8 +118,8 @@ function SessionView({ d }: { d: Detail }) {
         </div>
         {d.researcher && (
           <div className="flex gap-2">
-            <a href={`/api/staff/export?sessionId=${d.session.id}&format=csv`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
-              קובץ ניתוח (Excel/CSV)
+            <a href={`/api/staff/export?sessionId=${d.session.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
+              קובץ מחקר (Excel)
             </a>
             <a href={`/api/staff/export?sessionId=${d.session.id}&format=json`} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:bg-surface">
               JSON
@@ -115,30 +138,71 @@ function SessionView({ d }: { d: Detail }) {
         </div>
       )}
 
+      <dl className="tabular grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:grid-cols-8">
+        {[
+          ["הודעות", d.metrics.studentMessages],
+          ["דקות", d.metrics.minutesTotal],
+          ["ממוצע מילים", d.metrics.avgWords],
+          ["תגובה ממוצעת (שנ׳)", d.metrics.avgResponseSec ?? "—"],
+          ["בקשות לתשובה", d.metrics.asksForAnswer],
+          ["תדירות קשיים", d.metrics.difficultiesTotal],
+          ["מגוון קשיים", d.metrics.difficultyDiversity],
+          ["מגוון מיומנויות", d.metrics.skillDiversity],
+        ].map(([k, v]) => (
+          <div key={String(k)} className="rounded-xl border border-line bg-surface px-3 py-2">
+            <dd className="text-lg font-semibold">{v}</dd>
+            <dt className="text-[11px] text-muted">{k}</dt>
+          </div>
+        ))}
+      </dl>
+
       {/* journey */}
       <section className="space-y-3">
         <h2 className="font-semibold">המסע בין שלבי המידול</h2>
         <JourneyChart phases={d.phases} points={d.journey.points} onSelect={jump} />
         <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-          <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-            <table className="tabular w-full text-sm">
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface lg:col-span-2">
+            <table className="tabular w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-line text-xs text-muted">
                   <th className="px-3 py-2 text-start font-medium">שלב</th>
-                  <th className="px-3 py-2 text-center font-medium">כניסות לשלב</th>
-                  <th className="px-3 py-2 text-center font-medium">הודעות</th>
+                  <th className="px-2 py-2 text-center font-medium">כניסות</th>
+                  <th className="px-2 py-2 text-center font-medium">הודעות</th>
+                  <th className="px-2 py-2 text-center font-medium">דקות</th>
+                  <th className="px-2 py-2 text-center font-medium">תדירות קשיים</th>
+                  <th className="px-2 py-2 text-center font-medium">מגוון קשיים</th>
+                  <th className="px-2 py-2 text-center font-medium">מגוון מיומנויות</th>
+                  <th className="px-3 py-2 text-start font-medium">קודים</th>
+                  <th className="px-2 py-2 text-center font-medium">הושלם</th>
                 </tr>
               </thead>
               <tbody>
-                {d.phases.map((p, i) => (
-                  <tr key={p.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-1.5">
-                      {i + 1}. {p.label}
+                {d.metrics.perPhase.map((p, i) => (
+                  <tr key={p.phase} className="border-b border-line align-top last:border-0">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {i + 1}. {label(p.phase)}
                     </td>
-                    <td className={`px-3 py-1.5 text-center ${(d.journey.visits[p.id] ?? 0) > 1 ? "font-semibold text-warn" : ""}`}>
-                      {d.journey.visits[p.id] ?? 0}
+                    <td className={`px-2 py-1.5 text-center ${p.visits > 1 ? "font-semibold text-warn" : ""}`}>{p.visits}</td>
+                    <td className="px-2 py-1.5 text-center">{p.studentMessages}</td>
+                    <td className="px-2 py-1.5 text-center">{p.minutes}</td>
+                    <td className={`px-2 py-1.5 text-center ${p.difficulties ? "text-warn" : ""}`}>{p.difficulties}</td>
+                    <td className="px-2 py-1.5 text-center">{p.difficultyCodes.length}</td>
+                    <td className="px-2 py-1.5 text-center">{p.skillCodes.length}</td>
+                    <td className="px-3 py-1.5 text-xs">
+                      <div className="flex flex-wrap gap-1">
+                        {p.difficultyCodes.map((c) => (
+                          <span key={c} title={d.challengeLabels[c]} className="rounded bg-warn-soft px-1.5 text-warn">
+                            {c}
+                          </span>
+                        ))}
+                        {p.skillCodes.map((c) => (
+                          <span key={c} title={d.challengeLabels[c]} className="rounded bg-ok-soft px-1.5 text-ok">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
                     </td>
-                    <td className="px-3 py-1.5 text-center">{d.journey.messages[p.id] ?? 0}</td>
+                    <td className="px-2 py-1.5 text-center">{p.completed ? "✓" : ""}</td>
                   </tr>
                 ))}
               </tbody>

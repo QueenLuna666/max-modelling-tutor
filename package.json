@@ -12,6 +12,7 @@
     "@anthropic-ai/bedrock-sdk": "^0.34.4",
     "@anthropic-ai/sdk": "^0.133.0",
     "@supabase/supabase-js": "^2.117.3",
+    "exceljs": "^4.4.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

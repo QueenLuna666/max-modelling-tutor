@@ -97,7 +97,7 @@ STUDENT: ${message}`;
     const res = await llm().messages.create(
       {
         model: analyzerModel,
-        max_tokens: 600,
+        max_tokens: 2000,
         system: await loadPrompt("analyzer"),
         tools: [tool],
         tool_choice: { type: "tool", name: "record_analysis" },

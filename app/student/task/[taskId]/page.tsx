@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { readStudent, tr, useStudent, type StudentLogin } from "@/lib/i18n";
 import { sendMessage, startSession, type StartResult } from "@/lib/chatClient";
 import { Modal } from "@/components/Modal";
+import { TaskCard } from "@/components/TaskCard";
 
 type Msg = { role: "student" | "tutor"; content: string };
 type TaskInfo = StartResult["task"];
@@ -164,8 +165,7 @@ export default function TaskWork() {
       <section aria-live="polite" className="flex-1 space-y-3 overflow-y-auto py-4">
         {task && (
           <article className="rounded-2xl border border-line bg-surface p-4">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.statement}</p>
-            {task.image && <TaskImage src={task.image} />}
+            <TaskCard card={task.card} statement={task.statement} />
           </article>
         )}
         {messages.map((m, i) => (
@@ -225,10 +225,7 @@ export default function TaskWork() {
       )}
 
       <Modal open={showTask} onClose={() => setShowTask(false)} title={task?.title ?? ""} closeLabel={tr("close", lang)}>
-        <div lang={lang}>
-          <p className="leading-relaxed whitespace-pre-wrap">{task?.statement}</p>
-          {task?.image && <TaskImage src={task.image} />}
-        </div>
+        <div lang={lang}>{task && <TaskCard card={task.card} statement={task.statement} fullImage={lang === "he" ? task.image : null} />}</div>
       </Modal>
 
       <Modal open={confirmFinish} onClose={() => setConfirmFinish(false)} title={tr("finish", lang)} closeLabel={tr("close", lang)}>
@@ -262,11 +259,4 @@ function Bubble({ msg, youLabel, pending }: { msg: Msg; youLabel: string; pendin
       </div>
     </div>
   );
-}
-
-function TaskImage({ src }: { src: string }) {
-  const [ok, setOk] = useState(true);
-  if (!ok) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" onError={() => setOk(false)} className="mt-3 max-h-72 rounded-lg border border-line" />;
 }

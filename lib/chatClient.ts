@@ -8,6 +8,14 @@ export type StartResult = {
     title: string;
     statement: string;
     image: string | null;
+    card: {
+      image: string | null;
+      title?: string;
+      definition?: string;
+      image_alt?: string;
+      points?: string[];
+      question?: string;
+    } | null;
     phases: { id: string; label: string }[];
   };
 };

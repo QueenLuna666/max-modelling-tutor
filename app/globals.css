@@ -20,6 +20,7 @@
   --color-info-soft: #e6eefa;
   --color-ok: #2d7a4a;
   --color-ok-soft: #e3f2e8;
+  --color-sun: #fbd25c; /* the yellow of the lab's task cards */
 
   /* Seven modelling phases, light → deep (ordinal). */
   --color-ph1: #9fd3c7;

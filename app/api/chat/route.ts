@@ -147,18 +147,21 @@ export async function POST(req: Request) {
       try {
         const tutorModel = await model("tutor");
         try {
-          const res = llm().messages.stream({ model: tutorModel, max_tokens: 500, system, messages });
+          // Generous budget: the model may think before answering, and thinking counts toward max_tokens.
+          const res = llm().messages.stream({ model: tutorModel, max_tokens: 3000, system, messages });
           for await (const event of res) {
             if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
               full += event.delta.text;
               controller.enqueue(encoder.encode(event.delta.text));
             }
           }
+          const final = await res.finalMessage();
+          if (final.stop_reason !== "end_turn") console.warn("MAX reply stopped early:", final.stop_reason);
         } catch (streamErr) {
           if (full) throw streamErr;
           // Some Bedrock accounts may not allow streaming: ask once without it.
           console.warn("Streaming failed, retrying without streaming", streamErr);
-          const res = await llm().messages.create({ model: tutorModel, max_tokens: 500, system, messages });
+          const res = await llm().messages.create({ model: tutorModel, max_tokens: 3000, system, messages });
           const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
           full = text;
           controller.enqueue(encoder.encode(text));

@@ -4,12 +4,36 @@
 // Shared by every task; a task's phases use the same ids.
 
 export const PHASES = [
-  { id: "understanding", he: "הבנת הבעיה", ar: "فهم المشكلة", en: "Understanding the problem", code: "U" },
-  { id: "simplifying", he: "פישוט הבעיה", ar: "تبسيط المشكلة", en: "Simplifying the problem", code: "S" },
-  { id: "mathematising", he: "מתמטיזציה – בניית מודל מתמטי", ar: "بناء نموذج رياضي", en: "Mathematising – building a model", code: "M" },
-  { id: "math_work", he: "עבודה מתמטית", ar: "العمل الرياضي", en: "Working mathematically", code: "W" },
-  { id: "interpreting", he: "פירוש התוצאות", ar: "تفسير النتائج", en: "Interpreting the results", code: "I" },
-  { id: "validating", he: "תיקוף והערכת המודל", ar: "التحقق من النموذج", en: "Validating and improving the model", code: "V" },
+  {
+    id: "understanding", he: "הבנת הבעיה", ar: "فهم المشكلة", en: "Understanding the problem", code: "U",
+    desc: "The student understands the situation described in the task, its real or scientific context, the goal and the question. They build a first mental representation by combining the given information with prior knowledge and experience; identify the main factors and variables and the verbal/real relations between them; tell relevant from irrelevant information and given from missing information; and understand what must be achieved. In open tasks this includes realising that different solution paths are possible and that they will need to make decisions: there is no single correct answer, as long as the chosen variables are relevant and the relations between them are understood. Choosing mathematical variables, stating simplifying assumptions or building a model are NOT expected yet.",
+    product: "The student understands the problem and can explain what they want to achieve and what they know about the situation.",
+  },
+  {
+    id: "simplifying", he: "פישוט הבעיה", ar: "تبسيط المشكلة", en: "Simplifying the problem", code: "S",
+    desc: "The student turns the complex real situation into a simplified, structured real-world model that includes the factors relevant to the goal. This requires deciding which parts of reality to include and which to neglect, identifying key quantities and variables, examining constraints, and stating assumptions that make the problem manageable. The simplification must not be arbitrary: the student weighs how reasonable the assumptions are and what neglecting or adding factors may imply. Here variables are about their real-world meaning; defining symbols, units and quantitative relations belongs to mathematising.",
+    product: "A simplified real-world model with relevant factors, assumptions and constraints, ready to be mathematised.",
+  },
+  {
+    id: "mathematising", he: "מתמטיזציה – בניית מודל מתמטי", ar: "بناء نموذج رياضي", en: "Mathematising – building a model", code: "M",
+    desc: "The student translates the simplified real model into a mathematical model: defines variables and units, chooses suitable representations, expresses quantitative relations and decides on the structure of the model. A model may be an equation, function, system of relations, table, graph, geometric representation, computational rule or algorithm — it need not be algebraic. The key is a meaningful match between the real situation and the mathematical structure: the student understands what each mathematical element represents, which relations the model expresses and what it leaves out.",
+    product: "An explicit mathematical model that represents the simplified situation and can then be worked with.",
+  },
+  {
+    id: "math_work", he: "עבודה מתמטית", ar: "العمل الرياضي", en: "Working mathematically", code: "W",
+    desc: "The student applies mathematical knowledge, methods and tools to analyse the model and produce results for a given case: calculations, solving equations, graphs, comparing values, examining change, analysing cases. This is not only executing procedures: the student chooses a course of action that fits the model and the goal, applies it consistently, justifies mathematical decisions and checks the results. They work mainly inside the mathematical world, while the real context still guides the goals.",
+    product: "Mathematical results that follow from the model and the analysis.",
+  },
+  {
+    id: "interpreting", he: "פירוש התוצאות", ar: "تفسير النتائج", en: "Interpreting the results", code: "I",
+    desc: "The student translates the mathematical results back to the real situation: explains what the numbers, relations or results mean in the task's context, using the right units and taking into account the conditions and assumptions of the real model. This means moving from mathematical language to real-world language, understanding that a mathematical result is not necessarily a full answer to the original question.",
+    product: "A conclusion with real-world meaning, based on the model's results and consistent with the real model.",
+  },
+  {
+    id: "validating", he: "תיקוף והערכת המודל", ar: "التحقق من النموذج", en: "Validating and improving the model", code: "V",
+    desc: "The student critically examines whether the model and the results fit reality, the goal and the assumptions: judging how reasonable the results are, checking them against data or outside knowledge, examining the model's limits and identifying when it does not describe the situation well. The student distinguishes mathematical correctness from real-world validity: a model can be mathematically correct but unrealistic because of unreasonable assumptions, missing variables or ignored constraints. Validation may lead to comparing models, changing assumptions, improving relations or building an alternative model.",
+    product: "A reasoned evaluation of the model's validity and, if needed, a decision to correct, improve or rebuild it.",
+  },
 ] as const;
 
 export type PhaseId = (typeof PHASES)[number]["id"];

@@ -2,6 +2,7 @@
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Gender, type Lang, type Task } from "./tasks";
 import type { Plan } from "./policy";
+import { DIFFICULTIES, PHASES, SKILLS } from "./framework";
 
 export function loadBasePrompt(): Promise<string> {
   return loadPrompt("max_base");
@@ -44,7 +45,8 @@ ${task.context_for_tutor?.length ? `\n# Background for you (use it to guide, nev
 ${phaseList}
 
 # Current step: ${t(phase.label, "en")} (${phase.id})
-Goal: ${phase.goal}
+${frameworkBlock(phase.id)}
+In this task, the goal of this step: ${phase.goal}
 Evidence that the step is done:
 ${phase.evidence.map((e) => `- ${e}`).join("\n")}
 Common mistakes to watch for:
@@ -69,4 +71,17 @@ The student chose to be addressed as ${gender === "female" ? "a girl (בת / ب�
       ? "English has no grammatical gender; just be consistent."
       : `Always use ${gender === "female" ? "FEMININE" : "MASCULINE"} grammatical forms when addressing the student (verbs, adjectives, pronouns), every message.`
   }`;
+}
+
+// The research team's general definition of the current phase: what it is, the desired outcome,
+// the skills to look for and the difficulties to expect (with how to tell them apart).
+function frameworkBlock(phaseId: string): string {
+  const f = PHASES.find((p) => p.id === phaseId);
+  if (!f) return "";
+  const skills = SKILLS.filter((s) => s.phase === phaseId);
+  const diffs = DIFFICULTIES.filter((d) => d.phase === phaseId);
+  return `What this step is (research team's definition): ${f.desc}
+Desired outcome of this step: ${f.product}
+Skills to draw out with your questions: ${skills.map((s) => s.en).join("; ")}.
+Difficulties to watch for, and respond to the specific one you see: ${diffs.map((d) => d.en).join("; ")}.`;
 }
