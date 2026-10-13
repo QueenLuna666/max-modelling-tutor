@@ -6,8 +6,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getTask, nextPhaseId, type Gender, type Lang } from "@/lib/tasks";
 import { buildSystemPrompt, loadBasePrompt } from "@/lib/buildPrompt";
 import { planResponse, type Plan } from "@/lib/policy";
-import { analyzeMessage, ANALYZER_MODEL } from "@/lib/analyzer";
-import { llm, TUTOR_MODEL } from "@/lib/llm";
+import { analyzeMessage } from "@/lib/analyzer";
+import { llm, model } from "@/lib/llm";
 
 export const maxDuration = 60;
 
@@ -94,7 +94,6 @@ export async function POST(req: Request) {
       session_id: session.id,
       ...analysis,
       lang: session.lang,
-      model: ANALYZER_MODEL,
     });
   }
 
@@ -143,15 +142,26 @@ export async function POST(req: Request) {
     async start(controller) {
       let full = "";
       try {
-        const res = llm().messages.stream({ model: TUTOR_MODEL, max_tokens: 500, system, messages });
-        for await (const event of res) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            full += event.delta.text;
-            controller.enqueue(encoder.encode(event.delta.text));
+        const tutorModel = await model("tutor");
+        try {
+          const res = llm().messages.stream({ model: tutorModel, max_tokens: 500, system, messages });
+          for await (const event of res) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              full += event.delta.text;
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
           }
+        } catch (streamErr) {
+          if (full) throw streamErr;
+          // Some Bedrock accounts may not allow streaming: ask once without it.
+          console.warn("Streaming failed, retrying without streaming", streamErr);
+          const res = await llm().messages.create({ model: tutorModel, max_tokens: 500, system, messages });
+          const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+          full = text;
+          controller.enqueue(encoder.encode(text));
         }
       } catch (err) {
-        console.error("MAX stream failed", err);
+        console.error("MAX failed", err);
         const fallback = session.lang === "ar" ? "\n\n(حدث خطأ عندي. حاول/ي الإرسال مرة أخرى.)" : "\n\n(משהו השתבש אצלי. נסה/י לשלוח שוב.)";
         full += fallback;
         controller.enqueue(encoder.encode(fallback));

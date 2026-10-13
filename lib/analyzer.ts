@@ -1,7 +1,7 @@
 // The analyzer agent: codes every student message (phase, performance, motivation, challenge, evidence).
 // Runs before MAX answers, so MAX's hint level follows the diagnosis.
 import type Anthropic from "@anthropic-ai/sdk";
-import { llm, ANALYZER_MODEL } from "./llm";
+import { llm, model } from "./llm";
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Task } from "./tasks";
 import type { Motivation, Performance } from "./policy";
@@ -16,7 +16,6 @@ export type Analysis = {
   phase_complete: boolean;
 };
 
-export { ANALYZER_MODEL };
 
 export async function analyzeMessage(opts: {
   task: Task;
@@ -25,7 +24,7 @@ export async function analyzeMessage(opts: {
   message: string;
   wordCount: number;
   responseMs: number | null;
-}): Promise<Analysis | null> {
+}): Promise<(Analysis & { model: string }) | null> {
   const { task, guidedPhaseId, recent, message, wordCount, responseMs } = opts;
   const phaseIds = task.phases.map((p) => p.id);
   const challengeIds = task.challenge_types.map((c) => c.id);
@@ -80,9 +79,10 @@ STUDENT: ${message}`;
   };
 
   try {
+    const analyzerModel = await model("analyzer");
     const res = await llm().messages.create(
       {
-        model: ANALYZER_MODEL,
+        model: analyzerModel,
         max_tokens: 400,
         system: await loadPrompt("analyzer"),
         tools: [tool],
@@ -108,6 +108,7 @@ STUDENT: ${message}`;
       evidence: typeof a.evidence === "string" ? a.evidence.slice(0, 300) : "",
       asks_for_answer: a.asks_for_answer === true,
       phase_complete: a.phase_complete === true,
+      model: analyzerModel,
     };
   } catch (err) {
     console.error("Analyzer failed", err);
