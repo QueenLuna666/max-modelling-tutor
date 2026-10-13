@@ -39,7 +39,10 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
 
-  const { data: cls } = await db.from("classes").select("id").eq("code", classCode).maybeSingle();
+  // Accept the code even if O/0 or I/1 were mixed up (DEMO1 vs DEM01).
+  const variants = [...new Set([classCode, classCode.replace(/0/g, "O"), classCode.replace(/O/g, "0"), classCode.replace(/I/g, "1"), classCode.replace(/1/g, "I")])];
+  const { data: matches } = await db.from("classes").select("id, code").in("code", variants);
+  const cls = matches?.find((c) => c.code === classCode) ?? matches?.[0] ?? null;
   if (!cls) return NextResponse.json({ error: "קוד הכיתה לא נמצא" }, { status: 404 });
 
   const { data: student, error: stuErr } = await db

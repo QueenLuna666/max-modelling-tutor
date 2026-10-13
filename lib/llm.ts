@@ -14,17 +14,18 @@ export const PROVIDER: "bedrock" | "anthropic" = bedrockToken ? "bedrock" : "ant
 
 const CANDIDATES = {
   bedrock: {
+    // The hackathon account allows the global.* inference profiles (confirmed by the organisers).
     tutor: [
+      "global.anthropic.claude-sonnet-5-5",
       "anthropic.claude-sonnet-5-5",
       "us.anthropic.claude-sonnet-5-5",
-      "global.anthropic.claude-sonnet-5-5",
       "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     ],
     analyzer: [
+      "global.anthropic.claude-haiku-5-5",
       "anthropic.claude-haiku-5-5",
       "us.anthropic.claude-haiku-5-5",
-      "global.anthropic.claude-haiku-5-5",
       "us.anthropic.claude-haiku-4-5-20251001-v1:0",
       "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     ],
