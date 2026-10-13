@@ -26,17 +26,20 @@ MAX מלווה תלמידי חטיבת ביניים במשימות מידול מ
 
    | משתנה | מאיפה |
    | --- | --- |
-   | `ANTHROPIC_API_KEY` | מפתח Claude API |
+   | `AWS_BEARER_TOKEN_BEDROCK` | מפתח Bedrock של ההאקתון (הגישה ל-Claude דרך Amazon Bedrock) |
+   | `AWS_REGION` | `us-east-1` |
+   | `ANTHROPIC_API_KEY` | רק אם עובדים ישירות מול Anthropic במקום Bedrock |
    | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
    | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (סודי) |
    | `AUTH_SECRET` | מחרוזת אקראית, לפחות 16 תווים |
    | `ADMIN_SECRET` | סיסמה לדף `/admin` |
-   | `TUTOR_MODEL`, `ANALYZER_MODEL` | לא חובה. ברירת מחדל: `claude-sonnet-5-5`, `claude-haiku-5-5` |
+   | `TUTOR_MODEL`, `ANALYZER_MODEL` | לא חובה. ברירת מחדל ב-Bedrock: `anthropic.claude-sonnet-5-5`, `anthropic.claude-haiku-5-5` |
 
    → Deploy.
-3. באתר החי: `/admin` → סיסמת המנהל → פותחים חשבונות לחוקרות ולמורים.
-4. מורה נכנסת ב-`/staff/login` ופותחת כיתה, ומקבלת קוד לתלמידים. יש גם כיתת הדגמה מוכנה: `DEMO1`. היא לא משויכת למורה, ולכן רק חוקרות רואות אותה.
-5. תמונת המשימה: `public/tasks/speedometer.png`.
+3. בדיקה: `/api/health` מראה אם יש חיבור למסד הנתונים ול-Claude.
+4. באתר החי: `/admin` → סיסמת המנהל → פותחים חשבונות לחוקרות ולמורים.
+5. מורה נכנסת ב-`/staff/login` ופותחת כיתה, ומקבלת קוד לתלמידים. יש גם כיתת הדגמה מוכנה: `DEMO1`. היא לא משויכת למורה, ולכן רק חוקרות רואות אותה.
+6. תמונת המשימה: `public/tasks/speedometer.png`.
 
 ## פיתוח מקומי
 

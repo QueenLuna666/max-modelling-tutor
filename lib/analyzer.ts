@@ -1,6 +1,7 @@
 // The analyzer agent: codes every student message (phase, performance, motivation, challenge, evidence).
 // Runs before MAX answers, so MAX's hint level follows the diagnosis.
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { llm, ANALYZER_MODEL } from "./llm";
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Task } from "./tasks";
 import type { Motivation, Performance } from "./policy";
@@ -15,9 +16,7 @@ export type Analysis = {
   phase_complete: boolean;
 };
 
-export const ANALYZER_MODEL = process.env.ANALYZER_MODEL ?? "claude-haiku-5-5";
-
-let client: Anthropic | null = null;
+export { ANALYZER_MODEL };
 
 export async function analyzeMessage(opts: {
   task: Task;
@@ -81,8 +80,7 @@ STUDENT: ${message}`;
   };
 
   try {
-    client ??= new Anthropic();
-    const res = await client.messages.create(
+    const res = await llm().messages.create(
       {
         model: ANALYZER_MODEL,
         max_tokens: 400,

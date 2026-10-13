@@ -2,17 +2,15 @@
 //   save message → analyzer codes it → decide hint level → MAX answers (streamed) → save reply.
 // Body: { sessionId: string, content: string, responseMs?: number }
 // Response: text/plain stream. Header X-Phase = the step MAX is guiding after this turn.
-import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getTask, nextPhaseId, type Gender, type Lang } from "@/lib/tasks";
 import { buildSystemPrompt, loadBasePrompt } from "@/lib/buildPrompt";
 import { planResponse, type Plan } from "@/lib/policy";
 import { analyzeMessage, ANALYZER_MODEL } from "@/lib/analyzer";
+import { llm, TUTOR_MODEL } from "@/lib/llm";
 
 export const maxDuration = 60;
 
-let anthropic: Anthropic | null = null; // created on first request; reads ANTHROPIC_API_KEY
-const TUTOR_MODEL = process.env.TUTOR_MODEL ?? "claude-sonnet-5-5";
 const HISTORY_LIMIT = 30;
 
 type Turn = { role: "user" | "assistant"; content: string };
@@ -145,8 +143,7 @@ export async function POST(req: Request) {
     async start(controller) {
       let full = "";
       try {
-        anthropic ??= new Anthropic();
-        const res = anthropic.messages.stream({ model: TUTOR_MODEL, max_tokens: 500, system, messages });
+        const res = llm().messages.stream({ model: TUTOR_MODEL, max_tokens: 500, system, messages });
         for await (const event of res) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             full += event.delta.text;
