@@ -28,11 +28,11 @@ const TABLE: Record<Performance, Record<Motivation, { move: Move; hint: HintLeve
     low: { move: "praise_confirm", hint: "none", text: "Praise the thinking and confirm briefly. Keep it short." },
   },
   partial: {
-    high: { move: "guiding_question", hint: "light", text: "Ask one guiding question. Use at most the LIGHT hint." },
-    low: { move: "encourage_plus_hint", hint: "medium", text: "Encourage first, then give the MEDIUM hint." },
+    high: { move: "guiding_question", hint: "light", text: "Ask one guiding question." },
+    low: { move: "encourage_plus_hint", hint: "medium", text: "Encourage first, then give a small hint." },
   },
   low: {
-    high: { move: "structured_hint", hint: "strong", text: "Give the STRONG (structured) hint." },
+    high: { move: "structured_hint", hint: "strong", text: "Give a structured hint." },
     low: {
       move: "shrink_task",
       hint: "strong",
@@ -56,17 +56,22 @@ export function planResponse(input: {
       hintLevel: "medium",
       scaffoldType: "motivation",
       instruction:
-        "The student asked for the answer. Kindly say you won't give it, then make the next step smaller using the MEDIUM hint.",
+        "The student asked for the answer. Kindly say you won't give it, then make the next step smaller with one small hint.",
     };
   }
 
   const row = TABLE[input.performance][input.motivation];
   let hint = row.hint;
+  const attempts = input.phaseAttempts ?? 1;
 
-  // Stuck for a while in the same phase → one level stronger (never above strong).
-  if ((input.phaseAttempts ?? 0) >= 4 && hint !== "none") {
-    hint = LEVELS[Math.min(LEVELS.indexOf(hint) + 1, LEVELS.length - 1)];
+  // Hints escalate gradually inside a step: light on the first try, medium on the second,
+  // strong only from the third. Stuck for long (5+) → one level stronger than the table says.
+  if (hint !== "none") {
+    const cap: HintLevel = attempts <= 1 ? "light" : attempts === 2 ? "medium" : "strong";
+    if (LEVELS.indexOf(hint) > LEVELS.indexOf(cap)) hint = cap;
+    if (attempts >= 5) hint = LEVELS[Math.min(LEVELS.indexOf(hint) + 1, LEVELS.length - 1)];
   }
+  const hintLine = hint === "none" ? " Do not give a hint." : ` Use at most the ${hint.toUpperCase()} hint for this step.`;
 
   const scaffoldType: ScaffoldType = input.phaseComplete
     ? "transition"
@@ -78,5 +83,5 @@ export function planResponse(input: {
     ? " The student completed this step: sum up in one sentence what they achieved, then open the next step with one question."
     : "";
 
-  return { move: row.move, hintLevel: hint, scaffoldType, instruction: row.text + transition };
+  return { move: row.move, hintLevel: hint, scaffoldType, instruction: row.text + hintLine + transition };
 }

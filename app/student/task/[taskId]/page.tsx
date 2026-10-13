@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { readStudent, tr, useStudent, type StudentLogin } from "@/lib/i18n";
 import { sendMessage, startSession, type StartResult } from "@/lib/chatClient";
 import { Modal } from "@/components/Modal";
-import { PhaseStepper } from "@/components/PhaseStepper";
 
 type Msg = { role: "student" | "tutor"; content: string };
 type TaskInfo = StartResult["task"];
@@ -19,7 +18,6 @@ export default function TaskWork() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [task, setTask] = useState<TaskInfo | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [phase, setPhase] = useState<string | null>(null);
   const [status, setStatus] = useState<"active" | "done">("active");
   const [draft, setDraft] = useState<string | null>(null); // MAX's reply while streaming
   const [input, setInput] = useState("");
@@ -51,7 +49,6 @@ export default function TaskWork() {
           if (!cancelled && d.status === "active") {
             setSessionId(d.sessionId);
             setTask(d.task);
-            setPhase(d.phase);
             setMessages(d.messages);
             lastReplyAt.current = Date.now();
             return;
@@ -66,7 +63,6 @@ export default function TaskWork() {
         } catch {}
         setSessionId(d.sessionId);
         setTask(d.task);
-        setPhase(d.task.phases[0]?.id ?? null);
         setMessages([{ role: "tutor", content: d.opening }]);
         lastReplyAt.current = Date.now();
       } catch (e) {
@@ -93,11 +89,10 @@ export default function TaskWork() {
     setDraft("");
     try {
       const since = lastReplyAt.current ? Date.now() - lastReplyAt.current : null;
-      const { reply, phase: p } = await sendMessage(sessionId, text, since, (soFar) =>
+      const { reply } = await sendMessage(sessionId, text, since, (soFar) =>
         setDraft(soFar),
       );
       setMessages((m) => [...m, { role: "tutor", content: reply }]);
-      if (p) setPhase(p);
     } catch (e) {
       setError(e instanceof Error ? e.message : tr("error", me.lang));
     } finally {
@@ -163,11 +158,7 @@ export default function TaskWork() {
         </div>
       </header>
 
-      {task && (
-        <div className="border-b border-line py-2">
-          <PhaseStepper phases={task.phases} current={phase} label={tr("stepsTitle", lang)} />
-        </div>
-      )}
+      {/* The modelling phases are tracked for teachers and researchers only, not shown to students. */}
 
       {/* conversation */}
       <section aria-live="polite" className="flex-1 space-y-3 overflow-y-auto py-4">
