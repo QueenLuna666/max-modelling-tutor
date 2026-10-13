@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "./supabase";
 import { canSeeClass, isResearcher, type StaffSession } from "./auth";
 import { getTask, t, type Lang } from "./tasks";
+import { codeLabels } from "./framework";
 import {
   buildJourney,
   sessionAlerts,
@@ -25,8 +26,8 @@ async function fetchAll<T>(build: (from: number, to: number) => PageResult<T>): 
 }
 
 const MSG_COLS = "id, session_id, role, content, phase, word_count, response_ms, hint_level, scaffold_type, move, created_at";
-const ANN_COLS =
-  "message_id, session_id, phase, performance, motivation, challenge, evidence, asks_for_answer, phase_complete, created_at";
+// "*" so the pages keep working before and after the skills column is added.
+const ANN_COLS = "*";
 
 type ClassRow = { id: string; code: string; name: string | null; teacher_id: string | null; created_at: string };
 
@@ -217,7 +218,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
       endedAt: s.ended_at,
     },
     phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
-    challengeLabels: Object.fromEntries((task?.challenge_types ?? []).map((c) => [c.id, t(c.label, "he")])),
+    challengeLabels: codeLabels(),
     journey: buildJourney(phaseIds, messages, annotations),
     alerts: sessionAlerts(s.status, messages, annotations, phaseIds[phaseIds.length - 1] ?? ""),
     messages: messages.map((m) => {
@@ -241,6 +242,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
                     performance: a.performance,
                     motivation: a.motivation,
                     challenge: a.challenge,
+                    skills: a.skills ?? [],
                     evidence: a.evidence,
                     asksForAnswer: a.asks_for_answer,
                     phaseComplete: a.phase_complete,
@@ -328,6 +330,7 @@ export async function exportRows(staff: StaffSession, filter: { classId?: string
       performance: a?.performance ?? "",
       motivation: a?.motivation ?? "",
       challenge: a?.challenge ?? "",
+      skills: a?.skills?.join(" ") ?? "",
       evidence: a?.evidence ?? "",
       asks_for_answer: a ? String(a.asks_for_answer) : "",
       phase_complete: a ? String(a.phase_complete) : "",

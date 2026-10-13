@@ -24,15 +24,10 @@ export type Task = {
   statement: Localized;
   image?: string;
   givens: Record<string, number>;
-  reference: {
-    path: string;
-    answer_kmh?: number;
-    acceptable_range_kmh?: [number, number];
-    [k: string]: unknown;
-  };
+  context_for_tutor?: string[]; // background MAX may rely on (never pasted to the student as-is)
+  reference: { path: string; [k: string]: unknown };
   opening: Partial<Record<Lang, Gendered>> & { he: Gendered };
   phases: Phase[];
-  challenge_types: { id: string; label: Localized }[];
 };
 
 const TASKS: Record<string, Task> = {

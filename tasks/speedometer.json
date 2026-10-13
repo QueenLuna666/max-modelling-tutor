@@ -1,149 +1,138 @@
 {
   "id": "speedometer",
-  "version": "draft-2",
-  "_todo": "Statement and image are a DRAFT — replace with the researchers' original text. Phases = the 7 phases agreed with the researchers on 13.10.",
+  "version": "3 (13.10.2026, from the research team's materials)",
   "title": {
     "he": "משימת הספידומטר",
     "ar": "مهمة عدّاد السرعة",
     "en": "The speedometer task"
   },
   "statement": {
-    "he": "ליד אחד הגלגלים של מכונית מותקן חיישן. על הגלגל יש גלגל שיניים עם 48 שיניים, והחיישן סופר כמה שיניים עוברות לידו. בדקה אחת החיישן ספר 38,400 שיניים. קוטר הגלגל הוא 61 ס\"מ. באיזו מהירות נוסעת המכונית? הסבירו איך הגעתם לתשובה.",
-    "ar": "بجانب إحدى عجلات السيارة يوجد حسّاس. على العجلة ترس فيه 48 سنًّا، والحسّاس يعدّ الأسنان التي تمرّ بجانبه. خلال دقيقة واحدة عدّ الحسّاس 38,400 سنّ. قطر العجلة 61 سم. ما سرعة السيارة؟ اشرحوا كيف توصّلتم إلى الإجابة.",
-    "en": "A sensor is mounted next to one of a car's wheels. The wheel has a gear with 48 teeth, and the sensor counts the teeth that pass it. In one minute the sensor counted 38,400 teeth. The wheel's diameter is 61 cm. How fast is the car going? Explain how you got your answer."
+    "he": "במהלך נסיעתה של מכונית, מנה החיישן של הספידומטר 38,400 שיניים במשך דקה אחת.\nבאיזו מהירות נסעה המכונית ביחידות של קילומטרים לשעה?",
+    "ar": "خلال سفر سيارة، عدّ حسّاس عدّاد السرعة 38,400 سنًّا خلال دقيقة واحدة.\nما هي سرعة السيارة بوحدات الكيلومتر في الساعة؟",
+    "en": "While a car was driving, the speedometer's sensor counted 38,400 teeth in one minute.\nAt what speed was the car travelling, in kilometres per hour?"
   },
   "image": "/tasks/speedometer.png",
+  "context_for_tutor": [
+    "The task card (picture) explains: a speedometer shows the car's speed = the kilometres the car travels in one hour.",
+    "A gear (toothed ring) is mounted on the wheel axle and turns together with the wheel; an electronic sensor next to it counts the teeth that pass it during one minute of driving.",
+    "The wheel's outer diameter lets you compute its circumference, which is the distance the wheel travels in one rotation.",
+    "The number of teeth counted in one minute lets the speedometer compute how many rotations the wheel made.",
+    "NOT GIVEN in the task: how many teeth the gear has, and the wheel's diameter. The student must notice this (skill U4) and make reasonable, justified assumptions (S4, S5). There is no single correct answer.",
+    "Real-world knowledge (extra-mathematical knowledge) — share only as a strong hint, after the student has tried: such gears usually have 48 teeth; a car wheel's outer diameter is about 58 cm (private car) to 80 cm (truck)."
+  ],
   "givens": {
-    "teeth_per_rotation": 48,
-    "teeth_counted_per_minute": 38400,
-    "wheel_diameter_cm": 61
+    "teeth_counted_per_minute": 38400
   },
   "reference": {
     "_note": "For MAX's internal checking only. Never shown to the student.",
-    "path": "teeth → rotations → circumference → distance per minute → km/h",
-    "rotations_per_minute": 800,
-    "circumference_cm": 191.6,
-    "answer_kmh": 92,
-    "acceptable_range_kmh": [
-      85,
-      95
-    ]
+    "path": "teeth per minute → rotations per minute (÷ teeth per rotation) → distance per minute (× circumference πD) → distance per hour (× 60) → km/h (÷ 100,000)",
+    "formula": "v [km/h] = (T / N) × π × D × 60 / 100,000, where T = 38,400 teeth counted per minute, N = teeth on the gear (assumed), D = wheel diameter in cm (assumed)",
+    "examples": "N = 48: D = 58 cm → about 87 km/h; D = 61 cm → about 92 km/h; D = 65 cm → about 98 km/h; D = 80 cm → about 121 km/h. With N = 40 and D = 60 cm → about 108.5 km/h.",
+    "judge_by": "Check the student's result against THEIR OWN assumptions with the formula. A realistic car speed is roughly 30–150 km/h; 900 or 0.9 km/h points to a unit error.",
+    "effects": "Larger diameter → higher speed (more distance per rotation). More teeth on the gear → lower speed (fewer rotations for the same count).",
+    "extension": "What if the driver fits bigger off-road wheels but the speedometer still uses the old diameter? The car goes faster than the speedometer shows."
   },
   "opening": {
     "he": {
-      "male": "היי, אני MAX 👋 אני כאן כדי לחשוב איתך, לא לפתור במקומך. קרא את המשימה. במילים שלך: מה בעצם קורה כאן, ומה החיישן סופר?",
-      "female": "היי, אני MAX 👋 אני כאן כדי לחשוב איתך, לא לפתור במקומך. קראי את המשימה. במילים שלך: מה בעצם קורה כאן, ומה החיישן סופר?"
+      "male": "היי, אני MAX 👋 אני כאן כדי לחשוב איתך, לא לפתור במקומך. קרא את המשימה והסתכל בתמונה. במילים שלך: מה קורה כאן, ומה בעצם צריך למצוא?",
+      "female": "היי, אני MAX 👋 אני כאן כדי לחשוב איתך, לא לפתור במקומך. קראי את המשימה והסתכלי בתמונה. במילים שלך: מה קורה כאן, ומה בעצם צריך למצוא?"
     },
     "ar": {
-      "male": "مرحبًا، أنا MAX 👋 أنا هنا لأفكّر معك، وليس لأحلّ بدلًا منك. اقرأ المهمة. بكلماتك: ماذا يحدث هنا، وماذا يعدّ الحسّاس؟",
-      "female": "مرحبًا، أنا MAX 👋 أنا هنا لأفكّر معكِ، وليس لأحلّ بدلًا منكِ. اقرئي المهمة. بكلماتكِ: ماذا يحدث هنا، وماذا يعدّ الحسّاس؟"
+      "male": "مرحبًا، أنا MAX 👋 أنا هنا لأفكّر معك، وليس لأحلّ بدلًا منك. اقرأ المهمة وانظر إلى الصورة. بكلماتك: ماذا يحدث هنا، وما الذي علينا إيجاده؟",
+      "female": "مرحبًا، أنا MAX 👋 أنا هنا لأفكّر معكِ، وليس لأحلّ بدلًا منكِ. اقرئي المهمة وانظري إلى الصورة. بكلماتكِ: ماذا يحدث هنا، وما الذي علينا إيجاده؟"
     },
     "en": {
-      "male": "Hi, I'm MAX 👋 I'm here to think with you, not to solve it for you. Read the task. In your own words: what is happening here, and what is the sensor counting?",
-      "female": "Hi, I'm MAX 👋 I'm here to think with you, not to solve it for you. Read the task. In your own words: what is happening here, and what is the sensor counting?"
+      "male": "Hi, I'm MAX 👋 I'm here to think with you, not to solve it for you. Read the task and look at the picture. In your own words: what is happening, and what do we need to find?",
+      "female": "Hi, I'm MAX 👋 I'm here to think with you, not to solve it for you. Read the task and look at the picture. In your own words: what is happening, and what do we need to find?"
     }
   },
   "phases": [
     {
-      "id": "real_situation",
+      "id": "understanding",
       "label": {
-        "he": "מצב אמיתי",
-        "ar": "الوضع الحقيقي",
-        "en": "Real situation"
+        "he": "הבנת הבעיה",
+        "ar": "فهم المشكلة",
+        "en": "Understanding the problem"
       },
-      "goal": "The student describes what happens in reality and what must be found: the sensor counts teeth (not speed), and we need the car's speed.",
+      "goal": "The student builds a mental picture of the situation: the gear turns with the wheel and the sensor counts teeth (not speed); the goal is the car's speed in km/h; the given is 38,400 teeth in one minute; and the teeth per rotation and the wheel size are needed but not given.",
       "evidence": [
-        "says the sensor counts teeth passing it",
-        "links teeth to wheel rotations",
-        "says what has to be found (the car's speed)"
+        "explains that the sensor counts teeth passing it, not speed (U1)",
+        "says the goal is the speed in km/h (U2)",
+        "identifies 38,400 teeth per minute as the given (U3)",
+        "notices that the number of teeth on the gear and the wheel size are missing (U4)",
+        "describes in words the link teeth → rotations → distance (U5)"
       ],
       "misconceptions": [
-        "thinks the sensor measures speed directly",
-        "confuses teeth with rotations"
+        "thinks the sensor measures speed directly (D-U1)",
+        "thinks 38,400 is a distance or a number of rotations (D-U1)",
+        "starts plugging numbers into a formula without explaining what they mean (D-U5)",
+        "does not notice that information is missing, or searches for 'the' missing number instead of estimating it (D-U3)"
       ],
       "hints": {
-        "light": "You noticed the sensor gives information about movement. What exactly is it counting?",
-        "medium": "The sensor counts teeth. How could counting teeth help us know how many times the wheel turned?",
-        "strong": "Try this first: one full wheel rotation makes all 48 teeth pass the sensor. So the number of teeth can help us find the number of rotations."
+        "light": "What exactly does the sensor count — and what does the question ask you to find?",
+        "medium": "The sensor counts teeth that pass it. To get from 'teeth in a minute' to how fast the car moves, what else would you need to know? Is it all given in the task?",
+        "strong": "Look at the picture: the toothed gear turns together with the wheel. Two pieces of information are missing — one about the gear and one about the wheel. Which ones, and why do we need them?"
       },
-      "compliment": "Good — you identified that the sensor does not measure speed directly. That is an important modelling idea."
+      "compliment": "Good — you noticed what the sensor really counts and what information is missing. Noticing missing information is an important modelling move."
     },
     {
       "id": "simplifying",
       "label": {
-        "he": "פישוט והבניה",
-        "ar": "التبسيط والبناء",
-        "en": "Simplifying and structuring"
+        "he": "פישוט הבעיה",
+        "ar": "تبسيط المشكلة",
+        "en": "Simplifying the problem"
       },
-      "goal": "The student decides what matters and what can be ignored: names the key quantities (diameter, teeth counted per minute, teeth per rotation) and states assumptions (the wheel rolls without slipping; constant speed during the minute).",
+      "goal": "The student decides what matters (teeth on the gear, wheel diameter) and what can be ignored, and states explicit, justified assumptions: a reasonable number of teeth, a reasonable wheel diameter for an ordinary car, the wheel rolls without slipping, the speed is constant during the minute. Recognises that the answer depends on these assumptions.",
       "evidence": [
-        "names the wheel diameter as a quantity",
-        "names teeth counted per minute",
-        "names teeth per full rotation",
-        "assumes the wheel rolls without slipping",
-        "says one rotation = one circumference of distance",
-        "mentions constant speed during the minute"
+        "names the factors that matter: teeth per rotation and wheel size (S1, S3)",
+        "says what can be ignored, e.g. car model or tyre wear (S2)",
+        "states an explicit assumption with a value (S4)",
+        "justifies why the assumed value is reasonable (S5)",
+        "assumes rolling without slipping / constant speed (S4, S6)",
+        "says the result will depend on the assumptions (S8)"
       ],
       "misconceptions": [
-        "mixes up teeth counted and teeth per rotation",
-        "ignores the diameter",
-        "states no assumption at all",
-        "assumes one rotation moves the car one diameter"
+        "makes no assumption and gets stuck (D-S2)",
+        "chooses unrealistic values, e.g. a 3 m wheel or 2 teeth (D-S2)",
+        "tries to include every real detail (D-S1)",
+        "takes a number 'from the internet' without checking it fits (D-S2)"
       ],
       "hints": {
-        "light": "What matters in this situation, and what can we ignore? What are we assuming about the wheel while the car moves?",
-        "medium": "Try naming the important quantities: the diameter, the teeth counted, and the teeth in one rotation. And does the wheel slide, or roll normally? Why does that matter?",
-        "strong": "Assume the wheel rolls without slipping, so one full rotation moves the car one wheel circumference forward. The quantities that matter: d = wheel diameter, n = teeth counted in one minute, T = teeth in one full rotation."
+        "light": "Which quantities really decide how far the car moves in a minute, and which can we ignore?",
+        "medium": "The task doesn't tell us how many teeth the gear has or how big the wheel is. What values would be reasonable to assume for an ordinary car — and why?",
+        "strong": "Make two explicit assumptions and justify each: 'the gear has N teeth' and 'the wheel's diameter is D cm'. For reference, such gears often have 48 teeth, and car wheels are about 58–80 cm across. Also assume the wheel rolls without slipping."
       },
-      "compliment": "Excellent — you decided what matters and stated an assumption. Without that, the model would be much harder."
+      "compliment": "Excellent — you made clear assumptions and explained why they are reasonable. That is exactly what makes a model possible."
     },
     {
       "id": "mathematising",
       "label": {
-        "he": "מתמטיזציה",
-        "ar": "الصياغة الرياضيّة",
-        "en": "Mathematising"
+        "he": "מתמטיזציה – בניית מודל מתמטי",
+        "ar": "بناء نموذج رياضي",
+        "en": "Mathematising – building a model"
       },
-      "goal": "The student translates the real model into mathematical relationships: rotations = teeth counted ÷ teeth per rotation; one rotation = one circumference of distance.",
+      "goal": "The student defines variables with meaning and units (teeth counted per minute, teeth per rotation N, diameter D in cm) and expresses the relationships: rotations per minute = teeth counted ÷ teeth per rotation; distance per rotation = circumference = π × D; distance per minute = rotations × circumference; speed in km/h from distance per minute (× 60, ÷ 100,000). Can explain what each part of the model represents.",
       "evidence": [
-        "divides teeth counted by teeth per rotation",
-        "writes a relationship between rotations and distance"
+        "defines variables and their units (M1)",
+        "divides teeth counted by teeth per rotation to get rotations (M2, M4)",
+        "uses circumference π × D as the distance of one rotation (M2, M4)",
+        "writes the whole chain or one expression with the variables (M3, M4)",
+        "builds the assumptions into the model (M6)",
+        "explains what each part of the model means (M8)"
       ],
       "misconceptions": [
-        "multiplies instead of dividing",
-        "uses the radius as if it were the diameter"
+        "multiplies instead of dividing teeth by teeth per rotation (D-M2)",
+        "uses the diameter as the distance of one rotation (D-M5)",
+        "uses area or radius instead of circumference (D-M5, D-M6)",
+        "does not know the circumference formula (D-M6)",
+        "uses symbols without saying what they mean (D-M1)"
       ],
       "hints": {
-        "light": "How can you change 'teeth per minute' into 'rotations per minute'?",
-        "medium": "If 48 teeth pass in one rotation, what operation connects 38,400 teeth to rotations?",
-        "strong": "Use this structure: rotations per minute = teeth counted per minute ÷ teeth per rotation."
+        "light": "How can you turn 'teeth per minute' into 'rotations per minute'? And what distance does one rotation cover?",
+        "medium": "If N teeth pass the sensor in one full rotation, which operation turns 38,400 teeth into rotations? And which length of the wheel is the distance of one rotation?",
+        "strong": "Use this structure: rotations per minute = teeth counted per minute ÷ teeth per rotation; distance per rotation = circumference = π × D. How do the two combine into distance per minute?"
       },
-      "compliment": "Good reasoning — you are connecting the sensor data to wheel rotations."
-    },
-    {
-      "id": "math_model",
-      "label": {
-        "he": "מודל מתמטי",
-        "ar": "النموذج الرياضي",
-        "en": "Mathematical model"
-      },
-      "goal": "The student writes the whole model with variables (before plugging in numbers): distance per minute = (n ÷ T) × (π × d), then speed from distance per minute.",
-      "evidence": [
-        "writes one expression or a clear chain using the variables",
-        "includes both rotations and circumference in the model",
-        "explains what each part of the model stands for"
-      ],
-      "misconceptions": [
-        "model uses diameter instead of circumference",
-        "model skips the rotations step",
-        "jumps to numbers without a model"
-      ],
-      "hints": {
-        "light": "Can you write the whole path as one expression with your variables, before putting in numbers?",
-        "medium": "You have rotations per minute and distance per rotation. How do they combine into distance per minute?",
-        "strong": "Put the pieces together with variables: distance per minute = (n ÷ T) × (π × d). What does each part mean?"
-      },
-      "compliment": "Great — you built a complete model. Now the numbers just plug in."
+      "compliment": "Good reasoning — you connected the sensor data to rotations and rotations to distance. That is the heart of the model."
     },
     {
       "id": "math_work",
@@ -152,129 +141,80 @@
         "ar": "العمل الرياضي",
         "en": "Working mathematically"
       },
-      "goal": "The student calculates inside the model: rotations per minute, circumference (C = π × d), distance per minute.",
+      "goal": "The student calculates inside the model with their own assumed values: rotations per minute, circumference, distance per minute, then converts cm per minute to km per hour (× 60, ÷ 100,000), keeping units consistent and checking the calculation.",
       "evidence": [
-        "computes rotations per minute",
-        "uses C = π × d",
-        "multiplies circumference by rotations per minute"
+        "plans the order of calculations (W1)",
+        "computes rotations per minute, circumference and distance per minute (W3)",
+        "multiplies by 60 and divides by 100,000 to reach km/h (W2)",
+        "keeps units consistent along the way (W7)",
+        "examines how changing an assumption changes the result (W4)"
       ],
       "misconceptions": [
-        "uses area instead of circumference",
-        "uses the radius in C = π × d",
-        "arithmetic error"
+        "arithmetic error despite a correct plan (D-W1)",
+        "wrong formula, e.g. area instead of circumference (D-W2)",
+        "loses track of the multi-step calculation (D-W6)",
+        "forgets or mixes up the unit conversions (D-W7)"
       ],
       "hints": {
-        "light": "Start with your model. Which part can you calculate first?",
-        "medium": "First find rotations per minute, then the circumference with C = π × d. What do you get?",
-        "strong": "Calculate step by step: rotations per minute = n ÷ T, then C = π × d, then multiply the two to get distance per minute."
+        "light": "Start from your model. Which part can you calculate first?",
+        "medium": "Work step by step: rotations per minute, then the circumference, then distance per minute. What units does each result have?",
+        "strong": "You have distance per minute in centimetres. Multiply by 60 to get distance per hour, then divide by 100,000 to turn centimetres into kilometres."
       },
-      "compliment": "Great — you connected rotation to distance. That is the heart of the model."
+      "compliment": "Great — careful calculation and attention to units. That keeps the model honest."
     },
     {
       "id": "interpreting",
       "label": {
-        "he": "פירוש",
-        "ar": "التفسير",
-        "en": "Interpreting"
+        "he": "פירוש התוצאות",
+        "ar": "تفسير النتائج",
+        "en": "Interpreting the results"
       },
-      "goal": "The student converts cm per minute to km per hour and says what the number means.",
+      "goal": "The student explains what the number means in the real situation (the car would travel that many kilometres in one hour; this is what the speedometer would show), states the units, answers the original question, and says it holds under their assumptions.",
       "evidence": [
-        "names the units of the result",
-        "multiplies by 60 for per-hour",
-        "divides by 100,000 for cm → km"
+        "explains the meaning of the number in the real situation (I1)",
+        "states the units km/h and what they mean (I2)",
+        "answers the original question in a full sentence (I3, I6)",
+        "mentions that the answer depends on the assumptions (I5)"
       ],
       "misconceptions": [
-        "forgets to convert units",
-        "converts only minutes or only centimetres"
+        "gives a number without units or meaning (D-I1)",
+        "finished calculating but does not answer the question (D-I2)"
       ],
       "hints": {
-        "light": "What are the units of your result right now?",
-        "medium": "Is your result in centimetres per minute, centimetres per hour, or kilometres per hour?",
-        "strong": "First find distance per minute, then multiply by 60 to get distance per hour, and divide by 100,000 to convert centimetres to kilometres."
+        "light": "What does your number mean for the car? What are its units?",
+        "medium": "Is your result in centimetres per minute, kilometres per hour, or something else? Write it as an answer to the question in the task.",
+        "strong": "Say it in a full sentence: 'Assuming … teeth and a wheel of … cm, the car was travelling at about … km/h, meaning it would cover … km in one hour.'"
       },
-      "compliment": "Good check — thinking about units helps prevent modelling mistakes."
+      "compliment": "Good — you turned a number into a real answer about the car, with units and assumptions."
     },
     {
       "id": "validating",
       "label": {
-        "he": "אימות",
-        "ar": "التحقّق",
-        "en": "Validating"
+        "he": "תיקוף והערכת המודל",
+        "ar": "التحقق من النموذج",
+        "en": "Validating and improving the model"
       },
-      "goal": "The student judges whether the result is realistic for a car and checks the assumptions.",
+      "goal": "The student judges whether the result is realistic for a car, examines the assumptions (larger diameter → higher speed; more teeth → lower speed), identifies the model's limits, and suggests what would change the result or improve the model.",
       "evidence": [
-        "compares the result with real car speeds",
-        "notices a unit error if the result is unrealistic",
-        "revisits an assumption"
+        "checks whether the speed is realistic for a car (V1)",
+        "compares with known road speeds (V2)",
+        "examines whether the assumptions were reasonable (V3)",
+        "explains how changing the diameter or the number of teeth changes the speed (V3, V4)",
+        "suggests an improvement or an alternative assumption (V6)",
+        "justifies why the model fits (V8)"
       ],
       "misconceptions": [
-        "accepts any number without checking",
-        "accepts 900 or 0.9 km/h"
+        "accepts an unrealistic result such as 900 or 0.9 km/h (D-V1)",
+        "checks only the arithmetic, not the assumptions (D-V4)",
+        "ignores how the assumptions affect the result (D-V2)",
+        "says the model is lacking but not what to change (D-V3)"
       ],
       "hints": {
         "light": "Is your answer realistic for a car?",
-        "medium": "Would your answer make sense on a normal road?",
-        "strong": "A value around 90 km/h is realistic. A value like 900 km/h or 0.9 km/h would suggest a unit error."
+        "medium": "Would your speed make sense on an ordinary road? And what would happen to it with a bigger wheel or a gear with more teeth?",
+        "strong": "Ordinary cars drive at about 30–150 km/h; 900 or 0.9 km/h would point to a unit mistake. A bigger wheel means more distance per rotation — so a higher or lower speed? More teeth means fewer rotations for the same count — so?"
       },
-      "compliment": "Excellent validation. You are not just calculating; you are judging whether the model makes sense."
-    }
-  ],
-  "challenge_types": [
-    {
-      "id": "sensor_misread",
-      "label": {
-        "he": "לא הבין מה החיישן סופר",
-        "en": "Misread what the sensor counts"
-      }
-    },
-    {
-      "id": "variable_confusion",
-      "label": {
-        "he": "בלבול בין משתנים",
-        "en": "Variable confusion"
-      }
-    },
-    {
-      "id": "missing_assumption",
-      "label": {
-        "he": "הנחה חסרה",
-        "en": "Missing assumption"
-      }
-    },
-    {
-      "id": "calculation_error",
-      "label": {
-        "he": "שגיאת חישוב",
-        "en": "Calculation error"
-      }
-    },
-    {
-      "id": "unit_error",
-      "label": {
-        "he": "שגיאת יחידות",
-        "en": "Unit error"
-      }
-    },
-    {
-      "id": "no_interpretation",
-      "label": {
-        "he": "לא פירש את התוצאה",
-        "en": "Did not interpret the result"
-      }
-    },
-    {
-      "id": "no_validation",
-      "label": {
-        "he": "לא בדק סבירות",
-        "en": "Did not check reasonableness"
-      }
-    },
-    {
-      "id": "disengaged",
-      "label": {
-        "he": "ניתוק / חוסר מעורבות",
-        "en": "Disengaged"
-      }
+      "compliment": "Excellent validation — you are not just calculating, you are judging whether the model makes sense."
     }
   ]
 }

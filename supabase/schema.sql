@@ -1,4 +1,4 @@
--- MAX — Supabase schema (v2: staff accounts, gender, 7 agreed phases)
+-- MAX — Supabase schema (v3: staff accounts, gender, lab framework codes)
 -- Run once in the Supabase dashboard: SQL Editor → New query → paste → Run.
 -- All reads and writes go through our Next.js API routes with the service-role key,
 -- so RLS is on with no policies: the public (anon) key can't read anything.
@@ -75,7 +75,8 @@ create table if not exists annotations (
   phase            text,
   performance      text check (performance in ('high', 'partial', 'low')),
   motivation       text check (motivation in ('high', 'low')),
-  challenge        text,          -- difficulty type id, or null
+  challenge        text,          -- difficulty code (D-U1 … D-V5), or null
+  skills           text[],        -- skill codes shown (U1 … V8, X-…)
   evidence         text,          -- short quote from the student's message
   asks_for_answer  boolean not null default false,
   phase_complete   boolean not null default false,

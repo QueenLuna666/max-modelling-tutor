@@ -9,6 +9,7 @@ type Analysis = {
   performance: string | null;
   motivation: string | null;
   challenge: string | null;
+  skills?: string[];
   evidence: string | null;
   asksForAnswer: boolean;
   phaseComplete: boolean;
@@ -199,7 +200,14 @@ function SessionView({ d }: { d: Detail }) {
                       <>
                         <Tag k="ביצוע" v={PERF[m.analysis.performance ?? ""] ?? "—"} warn={m.analysis.performance === "low"} />
                         <Tag k="מוטיבציה" v={MOT[m.analysis.motivation ?? ""] ?? "—"} warn={m.analysis.motivation === "low"} />
-                        {m.analysis.challenge && <Tag k="קושי" v={d.challengeLabels[m.analysis.challenge] ?? m.analysis.challenge} warn />}
+                        {m.analysis.challenge && (
+                          <Tag k="קושי" v={`${m.analysis.challenge} · ${d.challengeLabels[m.analysis.challenge] ?? ""}`} warn />
+                        )}
+                        {m.analysis.skills?.map((c) => (
+                          <span key={c} title={d.challengeLabels[c] ?? c} className="rounded-md bg-ok-soft px-1.5 py-0.5 text-ok">
+                            {c} · {d.challengeLabels[c] ?? ""}
+                          </span>
+                        ))}
                         {m.analysis.asksForAnswer && <Tag k="" v="ביקש/ה תשובה" warn />}
                         {m.analysis.phaseComplete && <Tag k="" v="השלים/ה את השלב" />}
                         <Tag k="מילים" v={String(m.wordCount ?? "—")} />

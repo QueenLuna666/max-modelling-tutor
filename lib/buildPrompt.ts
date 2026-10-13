@@ -39,7 +39,7 @@ export function buildSystemPrompt(opts: {
 ${t(task.statement, "en")}
 
 Given values: ${JSON.stringify(task.givens)}
-
+${task.context_for_tutor?.length ? `\n# Background for you (use it to guide, never paste it to the student)\n${task.context_for_tutor.map((c) => `- ${c}`).join("\n")}\n` : ""}
 # Modelling steps for this task
 ${phaseList}
 
@@ -57,8 +57,10 @@ ${hintBlock}
 ${planBlock}
 
 # Reference (SECRET — for your own checking only, never reveal)
-Solution path: ${task.reference.path}
-Reference values: ${JSON.stringify(task.reference)}
+${Object.entries(task.reference)
+    .filter(([k]) => !k.startsWith("_"))
+    .map(([k, v]) => `- ${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+    .join("\n")}
 
 # Language and form of address
 Write your reply in ${LANG_NAME[lang]}.

@@ -20,6 +20,7 @@ export type AnnotationRow = {
   performance: "high" | "partial" | "low" | null;
   motivation: "high" | "low" | null;
   challenge: string | null;
+  skills?: string[] | null;
   evidence: string | null;
   asks_for_answer: boolean;
   phase_complete: boolean;
@@ -139,7 +140,7 @@ export function sessionAlerts(
   }
 
   if (annotations.some((a) => a.phase === lastPhaseId)) {
-    alerts.push({ kind: "progress", severity: "info", text: "הגיע/ה לשלב האימות" });
+    alerts.push({ kind: "progress", severity: "info", text: "הגיע/ה לשלב התיקוף" });
   }
 
   return alerts;

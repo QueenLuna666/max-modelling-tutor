@@ -1,16 +1,19 @@
-// The analyzer agent: codes every student message (phase, performance, motivation, challenge, evidence).
+// The analyzer agent: codes every student message with the lab's framework
+// (phase, performance, motivation, skills shown, main difficulty code, evidence).
 // Runs before MAX answers, so MAX's hint level follows the diagnosis.
 import type Anthropic from "@anthropic-ai/sdk";
 import { llm, model } from "./llm";
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Task } from "./tasks";
 import type { Motivation, Performance } from "./policy";
+import { DIAGNOSTIC_NOTES, DIFFICULTIES, SKILLS, TRANSVERSAL } from "./framework";
 
 export type Analysis = {
   phase: string;
   performance: Performance;
   motivation: Motivation;
   challenge: string | null;
+  skills: string[];
   evidence: string;
   asks_for_answer: boolean;
   phase_complete: boolean;
@@ -27,7 +30,8 @@ export async function analyzeMessage(opts: {
 }): Promise<(Analysis & { model: string }) | null> {
   const { task, guidedPhaseId, recent, message, wordCount, responseMs } = opts;
   const phaseIds = task.phases.map((p) => p.id);
-  const challengeIds = task.challenge_types.map((c) => c.id);
+  const challengeIds = DIFFICULTIES.map((d) => d.code);
+  const skillIds = [...SKILLS.map((x) => x.code), ...TRANSVERSAL.map((x) => x.code)];
   const guided = getPhase(task, guidedPhaseId);
 
   const phasesText = task.phases
@@ -47,8 +51,17 @@ ${t(task.statement, "en")}
 # Modelling steps
 ${phasesText}
 
-# Difficulty types
-${task.challenge_types.map((c) => `- ${c.id}: ${t(c.label, "en")}`).join("\n")}
+# Skill codes (desired behaviour)
+${SKILLS.map((x) => `- ${x.code} [${x.phase}]: ${x.en}`).join("\n")}
+
+# Cross-cutting skill codes
+${TRANSVERSAL.map((x) => `- ${x.code}: ${x.en}`).join("\n")}
+
+# Difficulty codes
+${DIFFICULTIES.map((d) => `- ${d.code} [${d.phase}]: ${d.en}`).join("\n")}
+
+# Diagnostic distinctions
+${DIAGNOSTIC_NOTES.map((n) => `- ${n}`).join("\n")}
 
 # Step MAX is currently guiding
 ${guided.id} (${t(guided.label, "en")})
@@ -69,12 +82,13 @@ STUDENT: ${message}`;
         phase: { type: "string", enum: phaseIds },
         performance: { type: "string", enum: ["high", "partial", "low"] },
         motivation: { type: "string", enum: ["high", "low"] },
+        skills: { type: "array", items: { type: "string", enum: skillIds } },
         challenge: { type: "string", enum: [...challengeIds, "none"] },
         evidence: { type: "string" },
         asks_for_answer: { type: "boolean" },
         phase_complete: { type: "boolean" },
       },
-      required: ["phase", "performance", "motivation", "challenge", "evidence", "asks_for_answer", "phase_complete"],
+      required: ["phase", "performance", "motivation", "skills", "challenge", "evidence", "asks_for_answer", "phase_complete"],
     },
   };
 
@@ -83,7 +97,7 @@ STUDENT: ${message}`;
     const res = await llm().messages.create(
       {
         model: analyzerModel,
-        max_tokens: 400,
+        max_tokens: 600,
         system: await loadPrompt("analyzer"),
         tools: [tool],
         tool_choice: { type: "tool", name: "record_analysis" },
@@ -99,12 +113,14 @@ STUDENT: ${message}`;
     const performance = (["high", "partial", "low"] as const).find((v) => v === a.performance) ?? "partial";
     const motivation = (["high", "low"] as const).find((v) => v === a.motivation) ?? "high";
     const challenge = challengeIds.includes(String(a.challenge)) ? String(a.challenge) : null;
+    const skills = Array.isArray(a.skills) ? [...new Set(a.skills.map(String).filter((c) => skillIds.includes(c)))] : [];
 
     return {
       phase,
       performance,
       motivation,
       challenge,
+      skills,
       evidence: typeof a.evidence === "string" ? a.evidence.slice(0, 300) : "",
       asks_for_answer: a.asks_for_answer === true,
       phase_complete: a.phase_complete === true,

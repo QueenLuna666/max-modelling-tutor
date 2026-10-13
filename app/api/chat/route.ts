@@ -89,12 +89,15 @@ export async function POST(req: Request) {
     responseMs,
   });
   if (analysis) {
-    await db.from("annotations").insert({
-      message_id: saved.id,
-      session_id: session.id,
-      ...analysis,
-      lang: session.lang,
-    });
+    const row = { message_id: saved.id, session_id: session.id, ...analysis, lang: session.lang };
+    const { error: annErr } = await db.from("annotations").insert(row);
+    if (annErr) {
+      // Database not migrated yet (no "skills" column): save the rest of the coding.
+      console.warn("Saving annotation without skills:", annErr.message);
+      const { skills: _skills, ...rest } = row;
+      void _skills;
+      await db.from("annotations").insert(rest);
+    }
   }
 
   // 3. Decide the response plan and whether MAX moves to the next step.
