@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MAX — AI tutor for mathematical modelling
 
-## Getting Started
+אב-טיפוס שנבנה ב-Technion LabAI Challenge (אוקטובר 2026) עבור מעבדת MtED (פרופ' זהבית כהן).
+MAX מלווה תלמידי חטיבת ביניים במשימות מידול מתמטי פתוחות: הוא לא פותר, אלא שואל ונותן רמזים מדורגים.
+סוכן שני מאבחן כל הודעה של התלמיד (שלב מידול, ביצועים, מוטיבציה, סוג קושי), ומורות וחוקרות רואות את התהליך בדשבורד.
 
-First, run the development server:
+## מבנה
+
+| | |
+| --- | --- |
+| `app/student/*` | כניסת תלמיד (קוד כיתה, כינוי, בן/בת, עברית/ערבית), ספריית משימות, מסך עבודה עם MAX |
+| `app/staff/*` | כניסת צוות, כיתות, דשבורד כיתה (תלמיד × שלב, התראות), שיחה + מסע לכל תלמיד |
+| `app/admin` | פתיחת חשבונות למורים ולחוקרות (מוגן ב-`ADMIN_SECRET`) |
+| `app/api/chat` | תור של תלמיד: שמירה ← סוכן מאבחן ← בחירת רמז ← MAX בסטרימינג ← שמירה |
+| `prompts/max_base.md` | ההוראות של MAX. החוקרות יכולות לערוך |
+| `prompts/analyzer.md` | ההוראות של הסוכן המאבחן |
+| `tasks/*.json` | משימות: נוסח, 7 שלבים, עדויות, טעויות נפוצות, 3 רמזים לכל שלב. משימה חדשה = קובץ + שורה ב-`lib/tasks.ts` |
+| `lib/policy.ts` | טבלת ביצועים × מוטיבציה → רמת רמז |
+| `lib/insights.ts` | המסע בין שלבים, חזרות, התראות. ספי ההתראות ב-`THRESHOLDS` |
+| `supabase/schema.sql` | הטבלאות |
+
+## הקמה
+
+1. **Supabase** → SQL Editor → להדביק את `supabase/schema.sql` → Run.
+2. **Vercel** → Add New → Project → לייבא את הריפו → Environment Variables:
+
+   | משתנה | מאיפה |
+   | --- | --- |
+   | `ANTHROPIC_API_KEY` | מפתח Claude API |
+   | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (סודי) |
+   | `AUTH_SECRET` | מחרוזת אקראית, לפחות 16 תווים |
+   | `ADMIN_SECRET` | סיסמה לדף `/admin` |
+   | `TUTOR_MODEL`, `ANALYZER_MODEL` | לא חובה. ברירת מחדל: `claude-sonnet-5-5`, `claude-haiku-5-5` |
+
+   → Deploy.
+3. באתר החי: `/admin` → סיסמת המנהל → פותחים חשבונות לחוקרות ולמורים.
+4. מורה נכנסת ב-`/staff/login` ופותחת כיתה, ומקבלת קוד לתלמידים. יש גם כיתת הדגמה מוכנה: `DEMO1`. היא לא משויכת למורה, ולכן רק חוקרות רואות אותה.
+5. תמונת המשימה: `public/tasks/speedometer.png`.
+
+## פיתוח מקומי
 
 ```bash
+cp .env.example .env.local   # למלא את המפתחות
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## פרטיות
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+תלמידים נכנסים עם כינוי בלבד, בלי שם ובלי מייל. כל הגישה לנתונים עוברת בשרת עם המפתח הסודי. כל הטבלאות מוגנות ב-RLS בלי מדיניות פתוחה, כך שאי אפשר לקרוא נתונים מהדפדפן.

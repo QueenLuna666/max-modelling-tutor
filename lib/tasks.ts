@@ -1,0 +1,76 @@
+// Task registry. Each task lives in tasks/<id>.json; add new tasks here.
+// JSON is imported (not read from disk) so it is always bundled on Vercel.
+import speedometer from "../tasks/speedometer.json";
+
+export type Lang = "he" | "ar" | "en";
+export type Localized = Partial<Record<Lang, string>> & { he: string };
+export type HintLevel = "none" | "light" | "medium" | "strong";
+export type Gender = "male" | "female";
+export type Gendered = { male: string; female: string };
+
+export type Phase = {
+  id: string;
+  label: Localized;
+  goal: string;
+  evidence: string[];
+  misconceptions: string[];
+  hints: { light: string; medium: string; strong: string };
+  compliment: string;
+};
+
+export type Task = {
+  id: string;
+  title: Localized;
+  statement: Localized;
+  image?: string;
+  givens: Record<string, number>;
+  reference: {
+    path: string;
+    answer_kmh?: number;
+    acceptable_range_kmh?: [number, number];
+    [k: string]: unknown;
+  };
+  opening: Partial<Record<Lang, Gendered>> & { he: Gendered };
+  phases: Phase[];
+  challenge_types: { id: string; label: Localized }[];
+};
+
+const TASKS: Record<string, Task> = {
+  speedometer: speedometer as unknown as Task,
+};
+
+export function getTask(id: string): Task | null {
+  return TASKS[id] ?? null;
+}
+
+export function listTasks(): Task[] {
+  return Object.values(TASKS);
+}
+
+export function getPhase(task: Task, phaseId: string): Phase {
+  return task.phases.find((p) => p.id === phaseId) ?? task.phases[0];
+}
+
+export function nextPhaseId(task: Task, phaseId: string): string | null {
+  const i = task.phases.findIndex((p) => p.id === phaseId);
+  return i >= 0 && i < task.phases.length - 1 ? task.phases[i + 1].id : null;
+}
+
+export function t(text: Localized, lang: Lang): string {
+  return text[lang] ?? text.he;
+}
+
+export function openingFor(task: Task, lang: Lang, gender: Gender): string {
+  return (task.opening[lang] ?? task.opening.he)[gender];
+}
+
+// What the student's screen needs — never includes the reference answer or hints.
+export function publicTask(task: Task, lang: Lang) {
+  return {
+    id: task.id,
+    title: t(task.title, lang),
+    statement: t(task.statement, lang),
+    image: task.image ?? null,
+    phases: task.phases.map((p) => ({ id: p.id, label: t(p.label, lang) })),
+  };
+}
