@@ -9,6 +9,7 @@ import { buildSystemPrompt, loadBasePrompt } from "@/lib/buildPrompt";
 import { planResponse, type Plan } from "@/lib/policy";
 import { analyzeMessage } from "@/lib/analyzer";
 import { llm, model } from "@/lib/llm";
+import { normalizeSettings } from "@/lib/classSettings";
 
 export const maxDuration = 60;
 
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
   const { data: session } = await db
     .from("sessions")
-    .select("id, task_id, lang, gender, current_phase, phase_attempts, status")
+    .select("id, task_id, lang, gender, current_phase, phase_attempts, status, student_id")
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return Response.json({ error: "Session not found" }, { status: 404 });
@@ -53,6 +54,16 @@ export async function POST(req: Request) {
 
   const task = await getTask(session.task_id);
   if (!task) return Response.json({ error: "Task not found" }, { status: 404 });
+
+  // The class's settings (hint ceiling). Missing column/table → defaults.
+  let settings = normalizeSettings(null);
+  try {
+    const { data: stu } = await db.from("students").select("class_id").eq("id", session.student_id).maybeSingle();
+    if (stu) {
+      const { data: cls } = await db.from("classes").select("*").eq("id", stu.class_id).maybeSingle();
+      settings = normalizeSettings(cls?.settings);
+    }
+  } catch {}
 
   // Conversation before this message (for the analyzer and for MAX).
   const { data: recentDesc } = await db
@@ -113,6 +124,7 @@ export async function POST(req: Request) {
       asksForAnswer: analysis.asks_for_answer,
       phaseComplete: analysis.phase_complete,
       phaseAttempts,
+      maxHint: settings.maxHint,
     });
     if (analysis.phase_complete) {
       const next = nextPhaseId(task, phaseId);

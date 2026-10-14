@@ -69,3 +69,14 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+/* Student "readable text" mode: more space between letters, words and lines. */
+.readable-text body {
+  letter-spacing: 0.03em;
+  word-spacing: 0.16em;
+}
+.readable-text main p,
+.readable-text main .leading-relaxed,
+.readable-text main textarea {
+  line-height: 2;
+}

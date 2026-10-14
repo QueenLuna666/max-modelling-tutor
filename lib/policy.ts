@@ -49,6 +49,26 @@ export function planResponse(input: {
   asksForAnswer?: boolean;
   phaseComplete?: boolean;
   phaseAttempts?: number; // student messages already spent in this phase
+  maxHint?: HintLevel; // the class's ceiling (teacher setting)
+}): Plan {
+  const plan = basePlan(input);
+  const max = input.maxHint ?? "strong";
+  if (LEVELS.indexOf(plan.hintLevel) > LEVELS.indexOf(max)) {
+    return {
+      ...plan,
+      hintLevel: max,
+      instruction: plan.instruction.replace(/Use at most the \w+ hint/, `Use at most the ${max.toUpperCase()} hint`) + ` (The teacher limited hints in this class to ${max}.)`,
+    };
+  }
+  return plan;
+}
+
+function basePlan(input: {
+  performance: Performance;
+  motivation: Motivation;
+  asksForAnswer?: boolean;
+  phaseComplete?: boolean;
+  phaseAttempts?: number;
 }): Plan {
   if (input.asksForAnswer) {
     return {

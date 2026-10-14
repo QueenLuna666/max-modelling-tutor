@@ -6,6 +6,9 @@ import { readStudent, tr, useStudent, type StudentLogin } from "@/lib/i18n";
 import { sendMessage, startSession, type StartResult } from "@/lib/chatClient";
 import { Modal } from "@/components/Modal";
 import { TaskCard } from "@/components/TaskCard";
+import { SpeakButton, useDictation, useSpeech, useTextPrefs } from "@/components/Accessibility";
+
+type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean };
 
 type Msg = { role: "student" | "tutor"; content: string };
 type TaskInfo = StartResult["task"];
@@ -26,6 +29,10 @@ export default function TaskWork() {
   const [error, setError] = useState("");
   const [showTask, setShowTask] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [features, setFeatures] = useState<Features | null>(null);
+  const [autoRead, setAutoRead] = useState(false);
+  const [micNote, setMicNote] = useState("");
+  const dictBase = useRef("");
   const lastReplyAt = useRef<number>(0); // set when MAX's reply arrives
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -76,13 +83,32 @@ export default function TaskWork() {
     };
   }, [router, taskId]);
 
+  // Which helper features the teacher turned on for this class.
+  useEffect(() => {
+    const s = readStudent();
+    if (!s) return;
+    fetch(`/api/class-settings?code=${encodeURIComponent(s.classCode)}`)
+      .then((r) => r.json())
+      .then((d) => setFeatures(d.features))
+      .catch(() => setFeatures({ readAloud: true, voiceInput: true, simpler: true, bigText: true }));
+  }, []);
+
+  const speechLang = me?.lang ?? "he";
+  const speech = useSpeech(speechLang);
+  const text = useTextPrefs();
+  const onDictation = useCallback((finalText: string, interim: string) => {
+    setInput((dictBase.current + " " + finalText + interim).trimStart());
+  }, []);
+  const dictation = useDictation(speechLang, onDictation);
+
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, draft]);
 
-  const send = useCallback(async () => {
-    const text = input.trim();
+  const send = useCallback(async (override?: string) => {
+    const text = (override ?? input).trim();
     if (!text || !sessionId || sending || status !== "active" || !me) return;
+    if (dictation.listening) dictation.stop();
     setSending(true);
     setError("");
     setInput("");
@@ -94,6 +120,7 @@ export default function TaskWork() {
         setDraft(soFar),
       );
       setMessages((m) => [...m, { role: "tutor", content: reply }]);
+      if (autoRead) speech.speak(`m-reply-${Date.now()}`, reply);
     } catch (e) {
       setError(e instanceof Error ? e.message : tr("error", me.lang));
     } finally {
@@ -101,7 +128,7 @@ export default function TaskWork() {
       setSending(false);
       lastReplyAt.current = Date.now();
     }
-  }, [input, sessionId, sending, status, me]);
+  }, [input, sessionId, sending, status, me, autoRead, speech, dictation]);
 
   async function finish() {
     if (!sessionId) return;
@@ -161,6 +188,50 @@ export default function TaskWork() {
 
       {/* The modelling phases are tracked for teachers and researchers only, not shown to students. */}
 
+      {/* helper tools (each one switchable per class by the teacher) */}
+      {features && (features.readAloud || features.bigText) && (
+        <div role="toolbar" aria-label={tr("tools", lang)} className="flex flex-wrap items-center gap-1.5 border-b border-line py-2 text-sm">
+          {features.readAloud && task && (
+            <>
+              <SpeakButton
+                active={speech.speaking === "task"}
+                onClick={() =>
+                  speech.speaking === "task"
+                    ? speech.stop()
+                    : speech.speak("task", [task.card?.title, task.card?.definition, ...(task.card?.points ?? []), task.card?.question ?? task.statement].filter(Boolean).join(". "))
+                }
+                label={tr("readTask", lang)}
+                stopLabel={tr("stopReading", lang)}
+              />
+              <label className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-muted hover:bg-surface">
+                <input type="checkbox" checked={autoRead} onChange={(e) => setAutoRead(e.target.checked)} className="accent-[var(--color-accent)]" />
+                {tr("autoRead", lang)}
+              </label>
+              {!speech.hasVoice && <span className="text-xs text-warn">{tr("noVoice", lang)}</span>}
+            </>
+          )}
+          {features.bigText && (
+            <span className="ms-auto flex items-center gap-1">
+              <button type="button" onClick={text.smaller} aria-label={tr("smaller", lang)} title={tr("smaller", lang)} className="rounded-full px-2 py-0.5 hover:bg-surface">
+                A−
+              </button>
+              <button type="button" onClick={text.bigger} aria-label={tr("bigger", lang)} title={tr("bigger", lang)} className="rounded-full px-2 py-0.5 text-base font-semibold hover:bg-surface">
+                A+
+              </button>
+              <button
+                type="button"
+                onClick={text.toggleReadable}
+                aria-pressed={text.readable}
+                title={tr("readable", lang)}
+                className={`rounded-full px-2 py-0.5 ${text.readable ? "bg-accent text-white" : "hover:bg-surface"}`}
+              >
+                Aa
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* conversation */}
       <section aria-live="polite" className="flex-1 space-y-3 overflow-y-auto py-4">
         {task && (
@@ -169,7 +240,21 @@ export default function TaskWork() {
           </article>
         )}
         {messages.map((m, i) => (
-          <Bubble key={i} msg={m} youLabel={tr("you", lang)} />
+          <Bubble
+            key={i}
+            msg={m}
+            youLabel={tr("you", lang)}
+            speak={
+              features?.readAloud && m.role === "tutor"
+                ? {
+                    active: speech.speaking === `m${i}`,
+                    toggle: () => (speech.speaking === `m${i}` ? speech.stop() : speech.speak(`m${i}`, m.content)),
+                    label: tr("readAloud", lang),
+                    stopLabel: tr("stopReading", lang),
+                  }
+                : undefined
+            }
+          />
         ))}
         {draft !== null && (
           <Bubble msg={{ role: "tutor", content: draft || tr("thinking", lang) }} youLabel="" pending={!draft} />
@@ -195,6 +280,18 @@ export default function TaskWork() {
           className="border-t border-line py-3"
         >
           {error && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{error}</p>}
+          {features?.simpler && messages.length > 0 && (
+            <button
+              type="button"
+              disabled={sending || !sessionId}
+              onClick={() => send(tr("simplerMsg", lang))}
+              className="mb-2 rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+            >
+              {tr("simpler", lang)}
+            </button>
+          )}
+          {dictation.listening && <p className="mb-1 text-sm font-medium text-accent">🎙️ {tr("listening", lang)}</p>}
+          {micNote && <p className="mb-1 text-xs text-warn">{micNote}</p>}
           <div className="flex items-end gap-2">
             <textarea
               id="message"
@@ -212,6 +309,23 @@ export default function TaskWork() {
               disabled={!sessionId}
               className="min-h-[3rem] flex-1 resize-none rounded-xl border border-line bg-surface px-3 py-2.5 leading-relaxed"
             />
+            {features?.voiceInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMicNote("");
+                  if (dictation.listening) return dictation.stop();
+                  dictBase.current = input;
+                  if (!dictation.start()) setMicNote(tr("noMic", lang));
+                }}
+                aria-pressed={dictation.listening}
+                aria-label={tr("speak", lang)}
+                title={tr("speak", lang)}
+                className={`rounded-xl border px-3 py-3 text-lg ${dictation.listening ? "animate-pulse border-accent bg-accent text-white" : "border-line bg-surface hover:bg-accent-soft"}`}
+              >
+                🎤
+              </button>
+            )}
             <button
               type="submit"
               disabled={!input.trim() || sending || !sessionId}
@@ -243,7 +357,9 @@ export default function TaskWork() {
   );
 }
 
-function Bubble({ msg, youLabel, pending }: { msg: Msg; youLabel: string; pending?: boolean }) {
+type SpeakCtl = { active: boolean; toggle: () => void; label: string; stopLabel: string };
+
+function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string; pending?: boolean; speak?: SpeakCtl }) {
   const mine = msg.role === "student";
   return (
     <div className={`flex ${mine ? "justify-start" : "justify-end"}`}>
@@ -252,8 +368,9 @@ function Bubble({ msg, youLabel, pending }: { msg: Msg; youLabel: string; pendin
           mine ? "rounded-ss-sm bg-accent text-white" : "rounded-se-sm bg-max text-ink"
         } ${pending ? "animate-pulse text-muted" : ""}`}
       >
-        <span className={`mb-0.5 block text-[11px] font-semibold ${mine ? "text-white/75" : "text-accent"}`}>
+        <span className={`mb-0.5 flex items-center justify-between gap-2 text-[11px] font-semibold ${mine ? "text-white/75" : "text-accent"}`}>
           {mine ? youLabel : "MAX"}
+          {speak && <SpeakButton small active={speak.active} onClick={speak.toggle} label={speak.label} stopLabel={speak.stopLabel} />}
         </span>
         {msg.content}
       </div>
