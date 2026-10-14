@@ -21,6 +21,9 @@ export type AnnotationRow = {
   motivation: "high" | "low" | null;
   challenge: string | null;
   skills?: string[] | null;
+  level?: string | null; // research team's level in the main phase
+  student_pattern?: string | null; // overall pattern so far
+  phases?: { phase: string; level: string; aspect: string; skills: string[]; evidence: string; after_support: boolean }[] | null;
   evidence: string | null;
   asks_for_answer: boolean;
   phase_complete: boolean;

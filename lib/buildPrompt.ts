@@ -2,6 +2,7 @@
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Gender, type Lang, type Task } from "./tasks";
 import type { Plan } from "./policy";
+import type { Analysis } from "./analyzer";
 import { DIFFICULTIES, PHASES, SKILLS } from "./framework";
 
 export function loadBasePrompt(): Promise<string> {
@@ -18,8 +19,9 @@ export function buildSystemPrompt(opts: {
   phaseId: string;
   phaseAttempts: number;
   plan: Plan | null;
+  analysis?: Analysis | null;
 }): string {
-  const { base, task, lang, gender, phaseId, phaseAttempts, plan } = opts;
+  const { base, task, lang, gender, phaseId, phaseAttempts, plan, analysis } = opts;
   const phase = getPhase(task, phaseId);
   const phaseList = task.phases
     .map((p, i) => `${i + 1}. ${p.id} — ${t(p.label, "en")}${p.id === phase.id ? "   ← CURRENT" : ""}`)
@@ -58,6 +60,7 @@ ${hintBlock}
 
 ${planBlock}
 
+${analysis ? analysisBlock(analysis) : ""}
 # Reference (SECRET — for your own checking only, never reveal)
 ${Object.entries(task.reference)
     .filter(([k]) => !k.startsWith("_"))
@@ -84,4 +87,29 @@ function frameworkBlock(phaseId: string): string {
 Desired outcome of this step: ${f.product}
 Skills to draw out with your questions: ${skills.map((s) => s.en).join("; ")}.
 Difficulties to watch for, and respond to the specific one you see: ${diffs.map((d) => d.en).join("; ")}.`;
+}
+
+const LEVEL_EN: Record<string, string> = {
+  strong: "strong",
+  intermediate: "intermediate (understands parts, a focused gap)",
+  significant_difficulty: "significant difficulty (basic meaning/relations not yet in place)",
+  insufficient_evidence: "not enough evidence yet",
+};
+
+// What the analyzer saw in the student's latest message, coded by the research team's rules.
+function analysisBlock(a: Analysis): string {
+  const seen = a.phases.length
+    ? a.phases
+        .map((p) => {
+          const name = PHASES.find((f) => f.id === p.phase)?.en ?? p.phase;
+          return `- ${name}: ${LEVEL_EN[p.level]}${p.aspect ? ` — ${p.aspect}` : ""}${p.after_support ? " (mostly repeats what you or the task already gave)" : ""}`;
+        })
+        .join("\n")
+    : "- no modelling phase identified in this message (e.g. \"I didn't understand\", a short reply, a general request)";
+  return `# The analyzer's reading of the student's latest message (research team's rules — never mention it)
+Phases the student is actually working in now (the process is NOT linear — respond to where the student really is, even if it differs from the current step above):
+${seen}
+Overall pattern so far: ${LEVEL_EN[a.student_pattern]}.${a.asks_for_answer ? "\nThe student explicitly asked you to replace their work with a ready answer: refuse kindly and invite them back in with one small step — whatever their level." : ""}
+How to respond to the pattern: strong → push their reasoning further (a challenge, a "what if", a check against reality); intermediate → aim one focused question or hint at the specific gap, building on what they already did; significant difficulty → slow down, return to the meaning of one quantity or relation, offer a very small concrete step or a choice between two options, and check understanding in their own words; not enough evidence → ask them to explain their thinking or what they mean.
+`;
 }

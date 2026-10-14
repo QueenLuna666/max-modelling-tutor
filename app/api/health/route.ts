@@ -2,11 +2,22 @@
 // Open it in the browser after deploying; it never shows secret values.
 import { candidates, PROVIDER, tryModel } from "@/lib/llm";
 import { supabaseAdmin } from "@/lib/supabase";
+import { analyzeMessage } from "@/lib/analyzer";
+import { getTask } from "@/lib/taskStore";
 
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(req: Request) {
   const t = Date.now();
+  // ?analyzer=1 — also run the analyzer on one sample message (checks the research team's rules end to end).
+  if (new URL(req.url).searchParams.get("analyzer") === "1") {
+    const task = await getTask("speedometer");
+    const sample = "אני חושב שצריך לחלק את 38,400 במספר השיניים בגלגל כדי לקבל סיבובים בדקה, אבל לא כתוב כמה שיניים יש";
+    const result = task
+      ? await analyzeMessage({ task, guidedPhaseId: "understanding", recent: [], message: sample, wordCount: 18, responseMs: 30000 })
+      : null;
+    return Response.json({ ok: !!result, sample, result, ms: Date.now() - t }, { headers: { "Cache-Control": "no-store" } });
+  }
   const database = await supabaseAdmin()
     .from("classes")
     .select("id", { count: "exact", head: true })

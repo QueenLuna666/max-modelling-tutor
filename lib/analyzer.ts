@@ -8,9 +8,25 @@ import { getPhase, t, type Task } from "./tasks";
 import type { Motivation, Performance } from "./policy";
 import { DIAGNOSTIC_NOTES, DIFFICULTIES, SKILLS, TRANSVERSAL } from "./framework";
 
-export type Analysis = {
+export type Level = "strong" | "intermediate" | "significant_difficulty" | "insufficient_evidence";
+export const LEVELS: Level[] = ["strong", "intermediate", "significant_difficulty", "insufficient_evidence"];
+
+// One phase identified in the message (the research team's rules allow several, or none).
+export type PhaseObservation = {
   phase: string;
-  performance: Performance;
+  level: Level;
+  aspect: string;
+  skills: string[];
+  evidence: string;
+  after_support: boolean;
+};
+
+export type Analysis = {
+  phase: string | null; // main phase, null = no phase identified
+  phases: PhaseObservation[];
+  level: Level; // level in the main phase
+  student_pattern: Level; // overall pattern in the conversation so far
+  performance: Performance | null; // 3-point scale for the tutor's policy (null = insufficient evidence)
   motivation: Motivation;
   challenge: string | null;
   skills: string[];
@@ -79,8 +95,25 @@ STUDENT: ${message}`;
     input_schema: {
       type: "object",
       properties: {
-        phase: { type: "string", enum: phaseIds },
-        performance: { type: "string", enum: ["high", "partial", "low"] },
+        phases: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              phase: { type: "string", enum: phaseIds },
+              level: { type: "string", enum: LEVELS },
+              aspect: { type: "string" },
+              skills: { type: "array", items: { type: "string", enum: skillIds } },
+              evidence: { type: "string" },
+              after_support: { type: "boolean" },
+            },
+            required: ["phase", "level", "aspect", "skills", "evidence", "after_support"],
+          },
+        },
+        phase: { type: "string", enum: [...phaseIds, "none"] },
+        level: { type: "string", enum: LEVELS },
+        performance: { type: "string", enum: ["high", "partial", "low", "none"] },
+        student_pattern: { type: "string", enum: LEVELS },
         motivation: { type: "string", enum: ["high", "low"] },
         skills: { type: "array", items: { type: "string", enum: skillIds } },
         challenge: { type: "string", enum: [...challengeIds, "none"] },
@@ -88,35 +121,64 @@ STUDENT: ${message}`;
         asks_for_answer: { type: "boolean" },
         phase_complete: { type: "boolean" },
       },
-      required: ["phase", "performance", "motivation", "skills", "challenge", "evidence", "asks_for_answer", "phase_complete"],
+      required: ["phases", "phase", "level", "performance", "student_pattern", "motivation", "skills", "challenge", "evidence", "asks_for_answer", "phase_complete"],
     },
   };
 
   try {
     const analyzerModel = await model("analyzer");
-    const res = await llm().messages.create(
-      {
-        model: analyzerModel,
-        max_tokens: 2000,
-        system: await loadPrompt("analyzer"),
-        tools: [tool],
-        tool_choice: { type: "tool", name: "record_analysis" },
-        messages: [{ role: "user", content: userContent }],
-      },
-      { timeout: 20_000 },
-    );
+    const rules = `${await loadPrompt("analyzer")}\n\n${await loadPrompt("lab_rules")}`;
+    const ask = (cache: boolean) =>
+      llm().messages.create(
+        {
+          model: analyzerModel,
+          max_tokens: 2500,
+          // The rules are long and the same every turn: cache them when the account allows it.
+          system: cache ? [{ type: "text", text: rules, cache_control: { type: "ephemeral" } }] : rules,
+          tools: [tool],
+          tool_choice: { type: "tool", name: "record_analysis" },
+          messages: [{ role: "user", content: userContent }],
+        },
+        { timeout: 25_000 },
+      );
+    let res;
+    try {
+      res = await ask(true);
+    } catch (err) {
+      console.warn("Analyzer with prompt caching failed, retrying without it:", err instanceof Error ? err.message : err);
+      res = await ask(false);
+    }
     const block = res.content.find((b) => b.type === "tool_use");
     if (!block || block.type !== "tool_use") return null;
     const a = block.input as Record<string, unknown>;
 
-    const phase = phaseIds.includes(String(a.phase)) ? String(a.phase) : guidedPhaseId;
-    const performance = (["high", "partial", "low"] as const).find((v) => v === a.performance) ?? "partial";
+    const asLevel = (v: unknown): Level => (LEVELS as string[]).includes(String(v)) ? (v as Level) : "insufficient_evidence";
+    const phases: PhaseObservation[] = Array.isArray(a.phases)
+      ? (a.phases as Record<string, unknown>[])
+          .filter((p) => phaseIds.includes(String(p.phase)))
+          .map((p) => ({
+            phase: String(p.phase),
+            level: asLevel(p.level),
+            aspect: typeof p.aspect === "string" ? p.aspect.slice(0, 80) : "",
+            skills: Array.isArray(p.skills) ? [...new Set(p.skills.map(String).filter((c) => skillIds.includes(c)))] : [],
+            evidence: typeof p.evidence === "string" ? p.evidence.slice(0, 300) : "",
+            after_support: p.after_support === true,
+          }))
+      : [];
+    const phase = phaseIds.includes(String(a.phase)) ? String(a.phase) : (phases[0]?.phase ?? null);
+    const level = asLevel(a.level);
+    const student_pattern = asLevel(a.student_pattern);
+    const performance = (["high", "partial", "low"] as const).find((v) => v === a.performance) ?? null;
     const motivation = (["high", "low"] as const).find((v) => v === a.motivation) ?? "high";
     const challenge = challengeIds.includes(String(a.challenge)) ? String(a.challenge) : null;
     const skills = Array.isArray(a.skills) ? [...new Set(a.skills.map(String).filter((c) => skillIds.includes(c)))] : [];
+    for (const p of phases) for (const c of p.skills) if (!skills.includes(c)) skills.push(c);
 
     return {
       phase,
+      phases,
+      level,
+      student_pattern,
       performance,
       motivation,
       challenge,

@@ -250,6 +250,9 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
               analysis: a
                 ? {
                     performance: a.performance,
+                    level: a.level ?? null,
+                    studentPattern: a.student_pattern ?? null,
+                    phases: a.phases ?? [],
                     motivation: a.motivation,
                     challenge: a.challenge,
                     skills: a.skills ?? [],

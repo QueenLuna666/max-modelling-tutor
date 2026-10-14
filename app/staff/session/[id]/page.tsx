@@ -9,6 +9,9 @@ import { useStaffLang } from "@/lib/staffLang";
 
 type Analysis = {
   performance: string | null;
+  level?: string | null;
+  studentPattern?: string | null;
+  phases?: { phase: string; level: string; aspect: string; after_support: boolean }[];
   motivation: string | null;
   challenge: string | null;
   skills?: string[];
@@ -74,6 +77,12 @@ type Detail = {
 
 type Pair = [string, string]; // [Hebrew, Arabic]
 const PERF: Record<string, Pair> = { high: ["גבוה", "عالٍ"], partial: ["חלקי", "جزئي"], low: ["נמוך", "منخفض"] };
+const LEVEL: Record<string, Pair> = {
+  strong: ["חזק", "قوي"],
+  intermediate: ["ביניים", "متوسط"],
+  significant_difficulty: ["קושי משמעותי", "صعوبة كبيرة"],
+  insufficient_evidence: ["אין די ראיות", "لا أدلة كافية"],
+};
 const MOT: Record<string, Pair> = { high: ["גבוהה", "عالية"], low: ["נמוכה", "منخفضة"] };
 const HINT: Record<string, Pair> = {
   none: ["בלי רמז", "بدون تلميح"],
@@ -298,7 +307,23 @@ function SessionView({ d }: { d: Detail }) {
                   <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">
                     {m.analysis ? (
                       <>
-                        <Tag k={L("ביצוע", "الأداء")} v={P(PERF[m.analysis.performance ?? ""], m.analysis.performance)} warn={m.analysis.performance === "low"} />
+                        {(m.analysis.phases ?? []).length > 1 &&
+                          m.analysis.phases!.map((p) => (
+                            <Tag
+                              key={p.phase}
+                              k={label(p.phase)}
+                              v={`${P(LEVEL[p.level], p.level)}${p.aspect ? ` · ${p.aspect}` : ""}${p.after_support ? ` · ${L("אחרי תמיכה", "بعد الدعم")}` : ""}`}
+                              warn={p.level === "significant_difficulty"}
+                            />
+                          ))}
+                        {m.analysis.level ? (
+                          <Tag k={L("רמה בשלב", "المستوى في المرحلة")} v={P(LEVEL[m.analysis.level], m.analysis.level)} warn={m.analysis.level === "significant_difficulty"} />
+                        ) : (
+                          <Tag k={L("ביצוע", "الأداء")} v={P(PERF[m.analysis.performance ?? ""], m.analysis.performance)} warn={m.analysis.performance === "low"} />
+                        )}
+                        {m.analysis.studentPattern && (
+                          <Tag k={L("דפוס עד כה", "النمط حتى الآن")} v={P(LEVEL[m.analysis.studentPattern], m.analysis.studentPattern)} />
+                        )}
                         <Tag k={L("מוטיבציה", "الدافعية")} v={P(MOT[m.analysis.motivation ?? ""], m.analysis.motivation)} warn={m.analysis.motivation === "low"} />
                         {m.analysis.challenge && (
                           <Tag k={L("קושי", "صعوبة")} v={`${m.analysis.challenge} · ${d.challengeLabels[m.analysis.challenge] ?? ""}`} warn />

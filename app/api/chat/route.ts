@@ -102,13 +102,18 @@ export async function POST(req: Request) {
   });
   if (analysis) {
     const row = { message_id: saved.id, session_id: session.id, ...analysis, lang: session.lang };
-    const { error: annErr } = await db.from("annotations").insert(row);
+    let { error: annErr } = await db.from("annotations").insert(row);
     if (annErr) {
-      // Database not migrated yet (no "skills" column): save the rest of the coding.
-      console.warn("Saving annotation without skills:", annErr.message);
-      const { skills: _skills, ...rest } = row;
-      void _skills;
-      await db.from("annotations").insert(rest);
+      // Database not migrated yet (no level / student_pattern / phases columns): save the rest.
+      console.warn("Saving annotation without the new columns:", annErr.message);
+      const { phases: _p, level: _l, student_pattern: _s, ...rest } = row;
+      void [_p, _l, _s];
+      ({ error: annErr } = await db.from("annotations").insert(rest));
+      if (annErr) {
+        const { skills: _skills, ...older } = rest;
+        void _skills;
+        await db.from("annotations").insert(older);
+      }
     }
   }
 
@@ -118,8 +123,10 @@ export async function POST(req: Request) {
   let plan: Plan | null = null;
 
   if (analysis) {
+    // "Insufficient evidence" in this message → fall back on the student's overall pattern.
+    const fromPattern = { strong: "high", intermediate: "partial", significant_difficulty: "low", insufficient_evidence: "partial" } as const;
     plan = planResponse({
-      performance: analysis.performance,
+      performance: analysis.performance ?? fromPattern[analysis.student_pattern],
       motivation: analysis.motivation,
       asksForAnswer: analysis.asks_for_answer,
       phaseComplete: analysis.phase_complete,
@@ -150,6 +157,7 @@ export async function POST(req: Request) {
     phaseId,
     phaseAttempts,
     plan,
+    analysis,
   });
 
   // 5. Stream MAX's reply to the browser, then save it.

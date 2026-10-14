@@ -10,7 +10,7 @@ type Msg = {
   content: string;
   phase?: string | null;
   hintLevel?: string | null;
-  analysis?: { performance?: string; motivation?: string; challenge?: string | null; skills?: string[]; evidence?: string } | null;
+  analysis?: { performance?: string; level?: string | null; studentPattern?: string | null; motivation?: string; challenge?: string | null; skills?: string[]; evidence?: string } | null;
 };
 
 export type SessionForSummary = {
@@ -32,7 +32,7 @@ function transcript(d: SessionForSummary, max = 60): string {
       if (m.role !== "student") return `MAX${m.hintLevel ? ` [hint: ${m.hintLevel}]` : ""}: ${m.content}`;
       const a = m.analysis;
       const tags = a
-        ? ` [phase: ${phaseName.get(m.phase ?? "") ?? m.phase}; performance: ${a.performance}; motivation: ${a.motivation}${a.challenge ? `; difficulty: ${label(a.challenge)}` : ""}${a.skills?.length ? `; skills: ${a.skills.map(label).join(", ")}` : ""}]`
+        ? ` [phase: ${phaseName.get(m.phase ?? "") ?? m.phase}; level: ${a.level ?? a.performance}; overall pattern so far: ${a.studentPattern ?? "?"}; motivation: ${a.motivation}${a.challenge ? `; difficulty: ${label(a.challenge)}` : ""}${a.skills?.length ? `; skills: ${a.skills.map(label).join(", ")}` : ""}]`
         : "";
       return `STUDENT${tags}: ${m.content}`;
     })

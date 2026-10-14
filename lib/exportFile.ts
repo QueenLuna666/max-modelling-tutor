@@ -5,6 +5,7 @@ import { DIFFICULTIES, SKILLS, TRANSVERSAL, PHASES, codeLabel } from "./framewor
 import type { ExportSession } from "./staffData";
 import { policyTable } from "./policy";
 
+const LEVEL_HE: Record<string, string> = { strong: "חזק", intermediate: "ביניים", significant_difficulty: "קושי משמעותי", insufficient_evidence: "אין די ראיות" };
 const PERF: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
 const MOT: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
 const HINT: Record<string, string> = { none: "בלי רמז", light: "קל", medium: "בינוני", strong: "חזק" };
@@ -67,6 +68,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       { header: "שפה", key: "lang", width: 7 },
       { header: "פנייה", key: "gender", width: 7 },
       { header: "סטטוס", key: "status", width: 9 },
+      { header: "דפוס התלמיד/ה (אחרון)", key: "pattern", width: 13 },
       { header: "התחלה", key: "start", width: 15 },
       { header: "משך (דקות)", key: "minutes", width: 9 },
       { header: "הודעות תלמיד", key: "msgs", width: 9 },
@@ -95,6 +97,10 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       lang: s.lang === "ar" ? "ערבית" : s.lang === "en" ? "אנגלית" : "עברית",
       gender: s.gender === "female" ? "בת" : "בן",
       status: STATUS[s.status] ?? s.status,
+      pattern: (() => {
+        const last = [...s.messages].reverse().find((m) => m.analysis?.student_pattern)?.analysis?.student_pattern;
+        return last ? (LEVEL_HE[last] ?? last) : "";
+      })(),
       start: when(s.startedAt),
       minutes: s.metrics.minutesTotal,
       msgs: s.metrics.studentMessages,
@@ -212,7 +218,10 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       { header: "דובר/ת", key: "who", width: 8 },
       { header: "תוכן ההודעה", key: "content", width: 60, wrap: true },
       { header: "שלב (תיוג)", key: "phase", width: 18 },
+      { header: "כל השלבים בהודעה (רמה)", key: "allPhases", width: 34, wrap: true },
+      { header: "רמת ביצוע בשלב", key: "level", width: 12 },
       { header: "ביצוע", key: "perf", width: 7 },
+      { header: "דפוס התלמיד/ה עד כה", key: "pattern", width: 12 },
       { header: "מוטיבציה", key: "mot", width: 8 },
       { header: "מיומנויות", key: "skills", width: 36, wrap: true },
       { header: "קושי", key: "diff", width: 30, wrap: true },
@@ -236,6 +245,11 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
           who: student ? s.name : "MAX",
           content: m.content,
           phase: phaseName(s, student ? (a?.phase ?? m.phase) : m.phase),
+          allPhases: (a?.phases ?? [])
+            .map((p) => `${phaseName(s, p.phase)} (${LEVEL_HE[p.level] ?? p.level}${p.after_support ? ", אחרי תמיכה" : ""})`)
+            .join("; "),
+          level: a?.level ? (LEVEL_HE[a.level] ?? a.level) : "",
+          pattern: a?.student_pattern ? (LEVEL_HE[a.student_pattern] ?? a.student_pattern) : "",
           perf: a?.performance ? PERF[a.performance] : "",
           mot: a?.motivation ? MOT[a.motivation] : "",
           skills: codes(a?.skills),
@@ -251,7 +265,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
         };
       }),
     ),
-    "כל ההודעות לפי הסדר. התיוג (שלב, ביצוע, מוטיבציה, מיומנויות, קושי) נעשה ע״י הסוכן המאבחן לכל הודעת תלמיד/ה. בהודעות MAX — רמת הרמז וסוג התמיכה שניתנו.",
+    "כל ההודעות לפי הסדר. התיוג נעשה ע״י הסוכן המאבחן לפי כללי צוות המחקר: זיהוי שלבי מידול (גם כמה בהודעה, או אף אחד), רמת ביצוע בכל שלב, ודפוס התלמיד/ה בשיחה. בהודעות MAX — רמת הרמז וסוג התמיכה שניתנו.",
   );
 
   // 4. Journey through the phases.
@@ -332,8 +346,11 @@ export function toJson(sessions: ExportSession[]) {
     exported_at: new Date().toISOString(),
     framework: "MtED modelling framework (Kohen lab): 6 phases, skills U1–V8 + cross-cutting X-, difficulties D-U1–D-V5 (Wess et al., 2021; TeDCI, Schwartz-Aviad & Kohen, 2026)",
     record_fields: {
-      phase: "modelling phase the message is about (may differ from the phase MAX was guiding)",
-      performance: "high | partial | low",
+      phase: "main modelling phase the message is about (may differ from the phase MAX was guiding); null = no phase identified",
+      level: "performance level in the main phase: strong | intermediate | significant_difficulty | insufficient_evidence (research rules, part B)",
+      student_pattern: "the student's overall pattern in the conversation so far, same scale (research rules, part C)",
+      phases: "every phase identified in the message, each with level, aspect, skills, evidence quote and after_support (content already supplied by MAX)",
+      performance: "high | partial | low — the level on the tutor's 3-point scale (null = insufficient evidence)",
       motivation: "high | low",
       challenge: "main difficulty code (D-…), or null",
       evidence: "short quote from the student's message that justifies the coding",
@@ -362,15 +379,19 @@ export function toJson(sessions: ExportSession[]) {
           at: m.created_at,
           student_message: m.content,
           // — the analyzer record (blueprint format) —
-          phase: a?.phase ?? m.phase,
+          phase: a ? a.phase : m.phase, // null = no phase identified (research rules A8)
           performance: a?.performance ?? null,
           motivation: a?.motivation ?? null,
           challenge: a?.challenge ?? null,
           evidence: a?.evidence ?? null,
           asks_for_answer: a?.asks_for_answer ?? false,
           lang: s.lang,
+          // — the research team's identification rules —
+          level: a?.level ?? null,
+          student_pattern: a?.student_pattern ?? null,
+          phases: (a?.phases ?? []).map((p) => ({ ...p, label: phaseName(s, p.phase) })),
           // — the lab's framework —
-          phase_label: phaseName(s, a?.phase ?? m.phase),
+          phase_label: phaseName(s, a ? a.phase : m.phase),
           challenge_label: a?.challenge ? codeLabel(a.challenge) : null,
           skills: a?.skills ?? [],
           skills_labels: (a?.skills ?? []).map((c) => codeLabel(c)),
