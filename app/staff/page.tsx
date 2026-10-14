@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffShell";
+import { useStaffLang } from "@/lib/staffLang";
 
 type ClassCard = { id: string; code: string; name: string | null; teacher: string | null; students: number; sessions: number; active: number };
 
@@ -14,6 +15,7 @@ function Classes({ researcher }: { researcher: boolean }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
+  const { L } = useStaffLang();
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -24,9 +26,9 @@ function Classes({ researcher }: { researcher: boolean }) {
       body: JSON.stringify({ name, code }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) setMsg(d.error ?? "שגיאה");
+    if (!r.ok) setMsg(d.error ?? L("שגיאה", "خطأ"));
     else {
-      setMsg(`נפתחה כיתה "${d.class.name}". קוד הכניסה לתלמידים: ${d.class.code}`);
+      setMsg(L(`נפתחה כיתה "${d.class.name}". קוד הכניסה לתלמידים: ${d.class.code}`, `تم فتح الصف "${d.class.name}". رمز دخول الطلاب: ${d.class.code}`));
       setName("");
       setCode("");
       reload();
@@ -36,13 +38,13 @@ function Classes({ researcher }: { researcher: boolean }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
       <section>
-        <h1 className="mb-1 text-2xl font-bold">{researcher ? "כל הכיתות" : "הכיתות שלי"}</h1>
-        <p className="mb-5 text-sm text-muted">לחיצה על כיתה פותחת את הדשבורד שלה.</p>
+        <h1 className="mb-1 text-2xl font-bold">{researcher ? L("כל הכיתות", "كل الصفوف") : L("הכיתות שלי", "صفوفي")}</h1>
+        <p className="mb-5 text-sm text-muted">{L("לחיצה על כיתה פותחת את הדשבורד שלה.", "الضغط على صف يفتح لوحة المتابعة الخاصة به.")}</p>
         {error && <p className="text-warn">{error}</p>}
         {!data ? (
-          <p className="text-muted">טוען…</p>
+          <p className="text-muted">{L("טוען…", "جارٍ التحميل…")}</p>
         ) : data.classes.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line p-6 text-muted">עוד אין כיתות. אפשר לפתוח כיתה בטופס שבצד.</p>
+          <p className="rounded-xl border border-dashed border-line p-6 text-muted">{L("עוד אין כיתות. אפשר לפתוח כיתה בטופס שבצד.", "لا توجد صفوف بعد. يمكن فتح صف من النموذج الجانبي.")}</p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {data.classes.map((c) => (
@@ -57,11 +59,11 @@ function Classes({ researcher }: { researcher: boolean }) {
                       {c.code}
                     </span>
                   </div>
-                  {researcher && <p className="mt-1 text-xs text-muted">מורה: {c.teacher ?? "—"}</p>}
+                  {researcher && <p className="mt-1 text-xs text-muted">{L("מורה", "المعلّم/ة")}: {c.teacher ?? "—"}</p>}
                   <dl className="tabular mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-                    <Stat label="תלמידים" value={c.students} />
-                    <Stat label="משימות" value={c.sessions} />
-                    <Stat label="פעילים עכשיו" value={c.active} highlight={c.active > 0} />
+                    <Stat label={L("תלמידים", "طلاب")} value={c.students} />
+                    <Stat label={L("משימות", "مهام")} value={c.sessions} />
+                    <Stat label={L("פעילים עכשיו", "نشطون الآن")} value={c.active} highlight={c.active > 0} />
                   </dl>
                 </Link>
               </li>
@@ -72,17 +74,17 @@ function Classes({ researcher }: { researcher: boolean }) {
 
       <aside>
         <form onSubmit={create} className="space-y-3 rounded-2xl border border-line bg-surface p-5">
-          <h2 className="font-semibold">פתיחת כיתה חדשה</h2>
+          <h2 className="font-semibold">{L("פתיחת כיתה חדשה", "فتح صف جديد")}</h2>
           <label className="block space-y-1">
-            <span className="text-sm">שם הכיתה</span>
-            <input id="className" value={name} onChange={(e) => setName(e.target.value)} placeholder="ח׳2 — מתמטיקה" className="w-full rounded-lg border border-line bg-paper px-3 py-2" />
+            <span className="text-sm">{L("שם הכיתה", "اسم الصف")}</span>
+            <input id="className" value={name} onChange={(e) => setName(e.target.value)} placeholder={L("ח׳2 — מתמטיקה", "الثامن 2 — رياضيات")} className="w-full rounded-lg border border-line bg-paper px-3 py-2" />
           </label>
           <label className="block space-y-1">
-            <span className="text-sm">קוד כניסה (לא חובה)</span>
-            <input id="classCodeNew" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} placeholder="ייווצר אוטומטית" className="w-full rounded-lg border border-line bg-paper px-3 py-2 uppercase" />
+            <span className="text-sm">{L("קוד כניסה (לא חובה)", "رمز الدخول (اختياري)")}</span>
+            <input id="classCodeNew" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} placeholder={L("ייווצר אוטומטית", "يُنشأ تلقائيًا")} className="w-full rounded-lg border border-line bg-paper px-3 py-2 uppercase" />
           </label>
           <button type="submit" disabled={!name.trim()} className="w-full rounded-lg bg-accent px-4 py-2 font-medium text-white disabled:opacity-40">
-            פתיחה
+            {L("פתיחה", "فتح")}
           </button>
           {msg && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-strong">{msg}</p>}
         </form>

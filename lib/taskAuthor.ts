@@ -153,6 +153,7 @@ export async function runTaskAuthor(opts: {
   current?: Task | null;
   history?: { role: "author" | "agent"; content: string }[];
   instruction?: string;
+  noteLang?: "he" | "ar"; // language of the agent's note to the researcher
   onProgress?: (chars: number) => void;
 }): Promise<{ raw: Record<string, unknown>; note: string }> {
   const parts: Anthropic.ContentBlockParam[] = [];
@@ -175,6 +176,7 @@ export async function runTaskAuthor(opts: {
     if (opts.grade) text += `Grade level: ${opts.grade}\n`;
     text += `\nCall record_task with the complete task.`;
   }
+  if (opts.noteLang === "ar") text += `\nWrite note_to_author in Arabic (the researcher is using the Arabic interface).`;
   parts.push({ type: "text", text });
 
   const res = llm().messages.stream({

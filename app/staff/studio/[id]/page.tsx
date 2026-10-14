@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import { StaffShell, useStaffData } from "@/components/StaffShell";
 import { TaskCard } from "@/components/TaskCard";
 import { postStream, shrinkImage, type UploadImage } from "@/lib/clientMedia";
-import { STATUS_LABEL, STATUS_STYLE, type TaskStatusUi } from "@/lib/studioUi";
+import { STATUS_LABEL, STATUS_LABEL_AR, STATUS_STYLE, type TaskStatusUi } from "@/lib/studioUi";
+import { useStaffLang } from "@/lib/staffLang";
 
 type Lang = "he" | "ar" | "en";
 type CardText = { title: string; definition: string; image_alt: string; points: string[]; question: string };
@@ -39,18 +40,19 @@ const LANGS: { id: Lang; label: string }[] = [
   { id: "en", label: "English" },
 ];
 
-const QUICK = [
-  "תעשה את המשימה קלה יותר לכיתה ז׳",
-  "תעשה אותה מאתגרת יותר",
-  "תשנה את המספר הנתון למשהו מציאותי יותר",
-  "תוסיף שאלת המשך לתלמידים מהירים",
-  "תבדוק שהניסוח בערבית טבעי וברור",
+const QUICK: [string, string][] = [
+  ["תעשה את המשימה קלה יותר לכיתה ז׳", "اجعل المهمة أسهل للصف السابع"],
+  ["תעשה אותה מאתגרת יותר", "اجعلها أكثر تحدّيًا"],
+  ["תשנה את המספר הנתון למשהו מציאותי יותר", "غيّر العدد المعطى إلى قيمة أكثر واقعية"],
+  ["תוסיף שאלת המשך לתלמידים מהירים", "أضف سؤال متابعة للطلاب السريعين"],
+  ["תבדוק שהניסוח בערבית טבעי וברור", "تأكّد أن الصياغة بالعربية طبيعية وواضحة"],
 ];
 
 export default function StudioTaskPage() {
   const { id } = useParams<{ id: string }>();
+  const { L } = useStaffLang();
   return (
-    <StaffShell crumbs={[{ href: "/staff/studio", label: "סטודיו משימות" }, { label: id }]}>
+    <StaffShell crumbs={[{ href: "/staff/studio", label: L("סטודיו משימות", "استوديو المهام") }, { label: id }]}>
       {() => <Editor id={id} />}
     </StaffShell>
   );
@@ -63,9 +65,10 @@ function Editor({ id }: { id: string }) {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<TaskData | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
+  const { L, lang: ui } = useStaffLang();
 
   if (error) return <p className="text-warn">{error}</p>;
-  if (!row) return <p className="text-muted">טוען…</p>;
+  if (!row) return <p className="text-muted">{L("טוען…", "جارٍ التحميل…")}</p>;
   const task = editing ?? row.data;
 
   async function patch(body: { data?: TaskData; status?: TaskStatusUi }, okMsg: string) {
@@ -75,7 +78,7 @@ function Editor({ id }: { id: string }) {
     const d = await r.json().catch(() => ({}));
     setSaving(false);
     if (!r.ok) {
-      setMsg(d.error ?? "השמירה נכשלה");
+      setMsg(d.error ?? L("השמירה נכשלה", "فشل الحفظ"));
       return false;
     }
     setMsg(okMsg);
@@ -96,11 +99,11 @@ function Editor({ id }: { id: string }) {
         body: JSON.stringify({ image: { data: img.data, mediaType: img.mediaType } }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "ההעלאה נכשלה");
+      if (!r.ok) throw new Error(d.error ?? L("ההעלאה נכשלה", "فشل الرفع"));
       const base = editing ?? row!.data;
       const next = { ...base, card: { ...(base.card ?? {}), image: d.url } };
       if (editing) setEditing(next);
-      else await patch({ data: next }, "התמונה הוחלפה");
+      else await patch({ data: next }, L("התמונה הוחלפה", "تم استبدال الصورة"));
     } catch (err) {
       setMsg((err as Error).message);
     } finally {
@@ -116,10 +119,10 @@ function Editor({ id }: { id: string }) {
       {/* header and actions */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{row.data.title.he}</h1>
+          <h1 className="text-2xl font-bold">{ui === "ar" ? (row.data.title.ar ?? row.data.title.he) : row.data.title.he}</h1>
           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
-            <span className={`rounded-md px-2 py-0.5 ${STATUS_STYLE[status]}`}>{STATUS_LABEL[status]}</span>
-            {row.builtIn && <span className="rounded-md bg-info-soft px-2 py-0.5 text-info">משימת המעבדה</span>}
+            <span className={`rounded-md px-2 py-0.5 ${STATUS_STYLE[status]}`}>{ui === "ar" ? STATUS_LABEL_AR[status] : STATUS_LABEL[status]}</span>
+            {row.builtIn && <span className="rounded-md bg-info-soft px-2 py-0.5 text-info">{L("משימת המעבדה", "مهمة المختبر")}</span>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -129,25 +132,25 @@ function Editor({ id }: { id: string }) {
             rel="noreferrer"
             className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:bg-paper"
           >
-            נסו כתלמיד/ה ↗
+            {L("נסו כתלמיד/ה ↗", "جرّبوا كطالب/ة ↗")}
           </a>
           {status === "draft" && (
-            <button type="button" disabled={saving} onClick={() => patch({ status: "published" }, "המשימה פורסמה. התלמידים יראו אותה ברשימת המשימות.")} className="rounded-lg bg-ok px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-              ✓ אישור ופרסום לתלמידים
+            <button type="button" disabled={saving} onClick={() => patch({ status: "published" }, L("המשימה פורסמה. התלמידים יראו אותה ברשימת המשימות.", "تم نشر المهمة. سيراها الطلاب في قائمة المهام."))} className="rounded-lg bg-ok px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              ✓ {L("אישור ופרסום לתלמידים", "موافقة ونشر للطلاب")}
             </button>
           )}
           {status === "published" && (
-            <button type="button" disabled={saving} onClick={() => patch({ status: "draft" }, "המשימה הוחזרה לטיוטה ולא מוצגת לתלמידים.")} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:bg-paper disabled:opacity-50">
-              הסתרה מהתלמידים
+            <button type="button" disabled={saving} onClick={() => patch({ status: "draft" }, L("המשימה הוחזרה לטיוטה ולא מוצגת לתלמידים.", "أُعيدت المهمة إلى مسودة ولا تظهر للطلاب."))} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:bg-paper disabled:opacity-50">
+              {L("הסתרה מהתלמידים", "إخفاء عن الطلاب")}
             </button>
           )}
           {status !== "archived" ? (
-            <button type="button" disabled={saving} onClick={() => patch({ status: "archived" }, "המשימה הועברה לארכיון.")} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted hover:bg-paper disabled:opacity-50">
-              לארכיון
+            <button type="button" disabled={saving} onClick={() => patch({ status: "archived" }, L("המשימה הועברה לארכיון.", "نُقلت المهمة إلى الأرشيف."))} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted hover:bg-paper disabled:opacity-50">
+              {L("לארכיון", "إلى الأرشيف")}
             </button>
           ) : (
-            <button type="button" disabled={saving} onClick={() => patch({ status: "draft" }, "המשימה שוחזרה כטיוטה.")} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:bg-paper disabled:opacity-50">
-              שחזור כטיוטה
+            <button type="button" disabled={saving} onClick={() => patch({ status: "draft" }, L("המשימה שוחזרה כטיוטה.", "استُعيدت المهمة كمسودة."))} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:bg-paper disabled:opacity-50">
+              {L("שחזור כטיוטה", "استعادة كمسودة")}
             </button>
           )}
         </div>
@@ -176,7 +179,7 @@ function Editor({ id }: { id: string }) {
               <div className="flex gap-2 text-sm">
                 <input ref={imgRef} type="file" accept="image/*" onChange={replaceImage} className="hidden" />
                 <button type="button" onClick={() => imgRef.current?.click()} disabled={saving} className="rounded-lg border border-line px-3 py-1.5 hover:bg-paper disabled:opacity-50">
-                  🖼️ החלפת תמונה
+                  🖼️ {L("החלפת תמונה", "استبدال الصورة")}
                 </button>
                 {editing ? (
                   <>
@@ -184,19 +187,19 @@ function Editor({ id }: { id: string }) {
                       type="button"
                       disabled={saving}
                       onClick={async () => {
-                        if (await patch({ data: editing }, "השינויים נשמרו")) setEditing(null);
+                        if (await patch({ data: editing }, L("השינויים נשמרו", "تم حفظ التغييرات"))) setEditing(null);
                       }}
                       className="rounded-lg bg-accent px-3 py-1.5 font-medium text-white disabled:opacity-50"
                     >
-                      שמירה
+                      {L("שמירה", "حفظ")}
                     </button>
                     <button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-paper">
-                      ביטול
+                      {L("ביטול", "إلغاء")}
                     </button>
                   </>
                 ) : (
                   <button type="button" onClick={() => setEditing(structuredClone(row.data))} className="rounded-lg border border-line px-3 py-1.5 hover:bg-paper">
-                    ✏️ עריכה ידנית
+                    ✏️ {L("עריכה ידנית", "تحرير يدوي")}
                   </button>
                 )}
               </div>
@@ -209,7 +212,7 @@ function Editor({ id }: { id: string }) {
                 <div className="mx-auto max-w-xl rounded-2xl border border-line bg-paper/50 p-4">
                   <TaskCard card={card ? { image: task.card?.image ?? null, ...card } : null} statement={task.statement[lang] ?? task.statement.he} />
                   <div className="mt-4 rounded-2xl bg-max px-4 py-2.5 text-sm">
-                    <span className="mb-0.5 block text-[11px] font-semibold text-accent">MAX פותח כך (פנייה לבת)</span>
+                    <span className="mb-0.5 block text-[11px] font-semibold text-accent">{L("MAX פותח כך (פנייה לבת)", "هكذا يفتتح MAX (مخاطبة بنت)")}</span>
                     {task.opening[lang]?.female ?? task.opening.he.female}
                   </div>
                 </div>
@@ -220,8 +223,8 @@ function Editor({ id }: { id: string }) {
           <TutorView task={task} />
 
           <details className="rounded-2xl border border-line bg-surface p-5">
-            <summary className="cursor-pointer font-semibold">עריכה מתקדמת (JSON)</summary>
-            <JsonEditor key={JSON.stringify(row.data).length} value={row.data} onSave={(d) => patch({ data: d }, "נשמר")} saving={saving} />
+            <summary className="cursor-pointer font-semibold">{L("עריכה מתקדמת (JSON)", "تحرير متقدّم (JSON)")}</summary>
+            <JsonEditor key={JSON.stringify(row.data).length} value={row.data} onSave={(d) => patch({ data: d }, L("נשמר", "تم الحفظ"))} saving={saving} />
           </details>
         </div>
 
@@ -248,27 +251,29 @@ function CardEditor({ task, lang, onChange }: { task: TaskData; lang: Lang; onCh
   const c: CardText = task.card?.[lang] ?? { title: "", definition: "", image_alt: "", points: [], question: "" };
   const setCard = (patch: Partial<CardText>) => onChange({ ...task, card: { ...(task.card ?? {}), [lang]: { ...c, ...patch } } });
   const op = task.opening[lang] ?? { male: "", female: "" };
+  const { L } = useStaffLang();
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted">**מילה** = מודגש. כל נקודה בשורה נפרדת.</p>
-      <Field label="שם המשימה (ברשימת המשימות)" value={task.title[lang] ?? ""} onChange={(v) => onChange({ ...task, title: { ...task.title, [lang]: v } })} />
-      <Field label="כותרת הכרטיס" value={c.title} onChange={(v) => setCard({ title: v })} />
-      <Field label="הגדרה" value={c.definition} onChange={(v) => setCard({ definition: v })} rows={3} />
-      <Field label="הסברים (נקודה בכל שורה)" value={c.points.join("\n")} onChange={(v) => setCard({ points: v.split("\n").filter((x) => x.trim()) })} rows={4} />
-      <Field label="השאלה" value={c.question} onChange={(v) => setCard({ question: v })} rows={3} />
-      <Field label="תיאור התמונה (לקוראי מסך)" value={c.image_alt} onChange={(v) => setCard({ image_alt: v })} />
-      <Field label="המשימה כטקסט רגיל" value={task.statement[lang] ?? ""} onChange={(v) => onChange({ ...task, statement: { ...task.statement, [lang]: v } })} rows={3} />
-      <Field label="פתיחה של MAX (לבן)" value={op.male} onChange={(v) => onChange({ ...task, opening: { ...task.opening, [lang]: { ...op, male: v } } })} rows={2} />
-      <Field label="פתיחה של MAX (לבת)" value={op.female} onChange={(v) => onChange({ ...task, opening: { ...task.opening, [lang]: { ...op, female: v } } })} rows={2} />
+      <p className="text-xs text-muted">{L("**מילה** = מודגש. כל נקודה בשורה נפרדת.", "**كلمة** = غامق. كل نقطة في سطر منفصل.")}</p>
+      <Field label={L("שם המשימה (ברשימת המשימות)", "اسم المهمة (في قائمة المهام)")} value={task.title[lang] ?? ""} onChange={(v) => onChange({ ...task, title: { ...task.title, [lang]: v } })} />
+      <Field label={L("כותרת הכרטיס", "عنوان البطاقة")} value={c.title} onChange={(v) => setCard({ title: v })} />
+      <Field label={L("הגדרה", "تعريف")} value={c.definition} onChange={(v) => setCard({ definition: v })} rows={3} />
+      <Field label={L("הסברים (נקודה בכל שורה)", "شروحات (نقطة في كل سطر)")} value={c.points.join("\n")} onChange={(v) => setCard({ points: v.split("\n").filter((x) => x.trim()) })} rows={4} />
+      <Field label={L("השאלה", "السؤال")} value={c.question} onChange={(v) => setCard({ question: v })} rows={3} />
+      <Field label={L("תיאור התמונה (לקוראי מסך)", "وصف الصورة (لقارئات الشاشة)")} value={c.image_alt} onChange={(v) => setCard({ image_alt: v })} />
+      <Field label={L("המשימה כטקסט רגיל", "المهمة كنص عادي")} value={task.statement[lang] ?? ""} onChange={(v) => onChange({ ...task, statement: { ...task.statement, [lang]: v } })} rows={3} />
+      <Field label={L("פתיחה של MAX (לבן)", "افتتاحية MAX (لولد)")} value={op.male} onChange={(v) => onChange({ ...task, opening: { ...task.opening, [lang]: { ...op, male: v } } })} rows={2} />
+      <Field label={L("פתיחה של MAX (לבת)", "افتتاحية MAX (لبنت)")} value={op.female} onChange={(v) => onChange({ ...task, opening: { ...task.opening, [lang]: { ...op, female: v } } })} rows={2} />
     </div>
   );
 }
 
 function TutorView({ task }: { task: TaskData }) {
+  const { L, lang } = useStaffLang();
   return (
     <details className="rounded-2xl border border-line bg-surface p-5" dir="ltr">
       <summary className="cursor-pointer font-semibold" dir="rtl">
-        מה MAX יודע על המשימה (רק לצוות): רקע, פתרון ייחוס, ושישה שלבים עם רמזים
+        {L("מה MAX יודע על המשימה (רק לצוות): רקע, פתרון ייחוס, ושישה שלבים עם רמזים", "ما يعرفه MAX عن المهمة (للطاقم فقط): خلفية، حل مرجعي، وست مراحل مع تلميحات")}
       </summary>
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
         {!!task.context_for_tutor?.length && (
@@ -301,7 +306,7 @@ function TutorView({ task }: { task: TaskData }) {
         {task.phases.map((p, i) => (
           <div key={p.id} className="rounded-xl bg-paper p-3">
             <h3 className="font-semibold">
-              {i + 1}. {p.label.en} <span dir="rtl" className="font-normal text-muted">· {p.label.he}</span>
+              {i + 1}. {p.label.en} <span dir="rtl" className="font-normal text-muted">· {lang === "ar" ? (p.label.ar ?? p.label.he) : p.label.he}</span>
             </h3>
             <p className="mt-1">{p.goal}</p>
             <p className="mt-2 text-xs font-semibold text-ok">Evidence</p>
@@ -325,6 +330,7 @@ function JsonEditor({ value, onSave, saving }: { value: TaskData; onSave: (d: Ta
   const initial = useMemo(() => JSON.stringify(value, null, 2), [value]);
   const [text, setText] = useState(initial);
   const [err, setErr] = useState("");
+  const { L } = useStaffLang();
   return (
     <div className="mt-3">
       <textarea dir="ltr" value={text} onChange={(e) => setText(e.target.value)} rows={18} className="w-full rounded-lg border border-line bg-paper p-3 font-mono text-xs" />
@@ -337,12 +343,12 @@ function JsonEditor({ value, onSave, saving }: { value: TaskData; onSave: (d: Ta
             onSave(JSON.parse(text));
             setErr("");
           } catch {
-            setErr("ה-JSON לא תקין");
+            setErr(L("ה-JSON לא תקין", "JSON غير صالح"));
           }
         }}
         className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
       >
-        שמירת JSON
+        {L("שמירת JSON", "حفظ JSON")}
       </button>
     </div>
   );
@@ -356,19 +362,20 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
   const [busy, setBusy] = useState<null | { stage: string; pct: number; asked: string }>(null);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const { L, lang } = useStaffLang();
 
   async function send(text: string) {
     const instruction = text.trim();
     if (!instruction || busy) return;
     setErr("");
     setInput("");
-    setBusy({ stage: "הסוכן קורא את הבקשה…", pct: 5, asked: instruction });
+    setBusy({ stage: L("הסוכן קורא את הבקשה…", "الوكيل يقرأ الطلب…"), pct: 5, asked: instruction });
     try {
       await postStream<{ stage?: string; progress?: number }>(
         `/api/studio/${id}/revise`,
-        { instruction, image: image ? { data: image.data, mediaType: image.mediaType } : null },
+        { instruction, image: image ? { data: image.data, mediaType: image.mediaType } : null, lang },
         (ev) => {
-          if (ev.progress) setBusy((b) => b && { ...b, stage: "כותב מחדש את המשימה…", pct: Math.min(96, 8 + (ev.progress! / EXPECTED_CHARS) * 88) });
+          if (ev.progress) setBusy((b) => b && { ...b, stage: L("כותב מחדש את המשימה…", "يعيد كتابة المهمة…"), pct: Math.min(96, 8 + (ev.progress! / EXPECTED_CHARS) * 88) });
         },
       );
       setImage(null);
@@ -384,11 +391,11 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
   return (
     <aside className="flex h-fit flex-col rounded-2xl border border-line bg-surface lg:sticky lg:top-4">
       <div className="border-b border-line px-4 py-3">
-        <h2 className="font-semibold">שיחה עם סוכן המשימות</h2>
-        <p className="text-xs text-muted">בקשו שינוי במילים שלכן. הסוכן כותב מחדש את המשימה כולה ושומר על העקביות שלה.</p>
+        <h2 className="font-semibold">{L("שיחה עם סוכן המשימות", "محادثة مع وكيل المهام")}</h2>
+        <p className="text-xs text-muted">{L("בקשו שינוי במילים שלכן. הסוכן כותב מחדש את המשימה כולה ושומר על העקביות שלה.", "اطلبوا تغييرًا بكلماتكم. الوكيل يعيد كتابة المهمة كلها ويحافظ على اتساقها.")}</p>
       </div>
       <div className="max-h-[50vh] space-y-2 overflow-y-auto px-4 py-3 text-sm">
-        {chat.length === 0 && <p className="text-muted">עוד אין שיחה על המשימה הזו.</p>}
+        {chat.length === 0 && <p className="text-muted">{L("עוד אין שיחה על המשימה הזו.", "لا توجد محادثة حول هذه المهمة بعد.")}</p>}
         {chat.map((t, i) => (
           <div key={i} className={`flex ${t.role === "author" ? "justify-start" : "justify-end"}`}>
             <div className={`max-w-[90%] rounded-2xl px-3 py-2 leading-relaxed whitespace-pre-wrap ${t.role === "author" ? "bg-accent text-white" : "bg-max"}`}>
@@ -405,26 +412,29 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
               <div className="h-1.5 overflow-hidden rounded-full bg-line">
                 <div className="h-full bg-accent transition-all duration-700" style={{ width: `${busy.pct}%` }} />
               </div>
-              <p className="mt-1.5 text-xs text-muted">{busy.stage} (כדקה)</p>
+              <p className="mt-1.5 text-xs text-muted">{busy.stage} {L("(כדקה)", "(نحو دقيقة)")}</p>
             </div>
           </>
         )}
       </div>
       <div className="border-t border-line p-3">
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {QUICK.map((q) => (
-            <button key={q} type="button" disabled={!!busy} onClick={() => send(q)} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent hover:text-accent disabled:opacity-50">
+          {QUICK.map(([he, ar]) => {
+            const q = lang === "ar" ? ar : he;
+            return (
+            <button key={he} type="button" disabled={!!busy} onClick={() => send(q)} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent hover:text-accent disabled:opacity-50">
               {q}
             </button>
-          ))}
+            );
+          })}
         </div>
         {image && (
           <div className="mb-2 flex items-center gap-2 text-xs">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={image.preview} alt="" className="size-10 rounded object-cover" />
-            <span className="text-muted">תמונה חדשה תצורף לבקשה</span>
+            <span className="text-muted">{L("תמונה חדשה תצורף לבקשה", "ستُرفق صورة جديدة بالطلب")}</span>
             <button type="button" onClick={() => setImage(null)} className="text-warn underline">
-              הסרה
+              {L("הסרה", "إزالة")}
             </button>
           </div>
         )}
@@ -446,7 +456,7 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
               if (f) setImage(await shrinkImage(f));
             }}
           />
-          <button type="button" onClick={() => fileRef.current?.click()} title="צירוף תמונה" className="rounded-lg border border-line px-2.5 py-2 hover:bg-paper">
+          <button type="button" onClick={() => fileRef.current?.click()} title={L("צירוף תמונה", "إرفاق صورة")} className="rounded-lg border border-line px-2.5 py-2 hover:bg-paper">
             📷
           </button>
           <textarea
@@ -460,11 +470,11 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
             }}
             rows={2}
             disabled={!!busy}
-            placeholder="למשל: תחליף את הנתון ל-500 ליטר ותוסיף רמז על יחידות"
+            placeholder={L("למשל: תחליף את הנתון ל-500 ליטר ותוסיף רמז על יחידות", "مثلًا: غيّر المعطى إلى 500 لتر وأضف تلميحًا عن الوحدات")}
             className="flex-1 resize-none rounded-lg border border-line bg-paper px-3 py-2 text-sm"
           />
           <button type="submit" disabled={!input.trim() || !!busy} className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">
-            שליחה
+            {L("שליחה", "إرسال")}
           </button>
         </form>
         {err && <p className="mt-2 text-sm text-warn">{err}</p>}

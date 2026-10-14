@@ -3,10 +3,10 @@
 // To add a feature: add it to FEATURES below, then read `settings.features.<key>` where it is used.
 
 export const FEATURES = {
-  readAloud: { he: "הקראה בקול", desc: "כפתור 🔊 שמקריא את המשימה ואת התשובות של MAX", default: true },
-  voiceInput: { he: "דיבור במקום הקלדה", desc: "כפתור 🎤: התלמיד/ה מדבר/ת והטקסט נכתב לבד", default: true },
-  simpler: { he: "״תסביר לי פשוט יותר״", desc: "כפתור שמבקש מ-MAX לנסח שוב במילים פשוטות וקצרות", default: true },
-  bigText: { he: "הגדלת טקסט וגופן קריא", desc: "כפתורי A+ ו-Aa לנוחות קריאה", default: true },
+  readAloud: { he: "הקראה בקול", desc: "כפתור 🔊 שמקריא את המשימה ואת התשובות של MAX", ar: "القراءة بصوت", descAr: "زر 🔊 يقرأ المهمة وردود MAX", default: true },
+  voiceInput: { he: "דיבור במקום הקלדה", desc: "כפתור 🎤: התלמיד/ה מדבר/ת והטקסט נכתב לבד", ar: "الكلام بدل الكتابة", descAr: "زر 🎤: الطالب/ة يتكلّم والنص يُكتب تلقائيًا", default: true },
+  simpler: { he: "״תסביר לי פשוט יותר״", desc: "כפתור שמבקש מ-MAX לנסח שוב במילים פשוטות וקצרות", ar: "«اشرح لي بشكل أبسط»", descAr: "زر يطلب من MAX إعادة الصياغة بكلمات أبسط وأقصر", default: true },
+  bigText: { he: "הגדלת טקסט וגופן קריא", desc: "כפתורי A+ ו-Aa לנוחות קריאה", ar: "تكبير النص وخط واضح", descAr: "أزرار A+ و-Aa لراحة القراءة", default: true },
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

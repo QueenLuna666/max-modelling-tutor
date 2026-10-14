@@ -97,7 +97,7 @@ export function buildJourney(
   return { points, visits, messages: counts, backMoves, furthestIndex: furthest };
 }
 
-export type Alert = { kind: "silence" | "short" | "asks" | "motivation" | "progress"; text: string; severity: "warn" | "info" };
+export type Alert = { kind: "silence" | "short" | "asks" | "motivation" | "progress"; text: string; textAr?: string; severity: "warn" | "info" };
 
 export function sessionAlerts(
   status: string,
@@ -113,7 +113,7 @@ export function sessionAlerts(
   if (status === "active" && last) {
     const minutes = (now - new Date(last.created_at).getTime()) / 60000;
     if (last.role === "tutor" && minutes >= THRESHOLDS.silenceMinutes) {
-      alerts.push({ kind: "silence", severity: "warn", text: `לא כתב/ה ${Math.floor(minutes)} דקות` });
+      alerts.push({ kind: "silence", severity: "warn", text: `לא כתב/ה ${Math.floor(minutes)} דקות`, textAr: `لم يكتب/تكتب منذ ${Math.floor(minutes)} دقائق` });
     }
   }
 
@@ -126,21 +126,22 @@ export function sessionAlerts(
       kind: "short",
       severity: "warn",
       text: `${THRESHOLDS.shortAnswerStreak} התשובות האחרונות קצרות מ-${THRESHOLDS.shortAnswerWords} מילים`,
+      textAr: `آخر ${THRESHOLDS.shortAnswerStreak} إجابات أقصر من ${THRESHOLDS.shortAnswerWords} كلمات`,
     });
   }
 
   const asks = annotations.filter((a) => a.asks_for_answer).length;
   if (asks >= THRESHOLDS.askAnswerCount) {
-    alerts.push({ kind: "asks", severity: "warn", text: `ביקש/ה את התשובה ${asks} פעמים` });
+    alerts.push({ kind: "asks", severity: "warn", text: `ביקש/ה את התשובה ${asks} פעמים`, textAr: `طلب/ت الإجابة ${asks} مرات` });
   }
 
   const lastCodes = annotations.slice(-THRESHOLDS.lowMotivationStreak);
   if (lastCodes.length === THRESHOLDS.lowMotivationStreak && lastCodes.every((a) => a.motivation === "low")) {
-    alerts.push({ kind: "motivation", severity: "warn", text: "מוטיבציה נמוכה בהודעות האחרונות" });
+    alerts.push({ kind: "motivation", severity: "warn", text: "מוטיבציה נמוכה בהודעות האחרונות", textAr: "دافعية منخفضة في الرسائل الأخيرة" });
   }
 
   if (annotations.some((a) => a.phase === lastPhaseId)) {
-    alerts.push({ kind: "progress", severity: "info", text: "הגיע/ה לשלב התיקוף" });
+    alerts.push({ kind: "progress", severity: "info", text: "הגיע/ה לשלב התיקוף", textAr: "وصل/ت إلى مرحلة التحقق" });
   }
 
   return alerts;

@@ -7,8 +7,9 @@ import { Modal } from "@/components/Modal";
 import { ClassQr } from "@/components/ClassQr";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
 import { FEATURES, type ClassSettings, type FeatureKey } from "@/lib/classSettings";
+import { useStaffLang } from "@/lib/staffLang";
 
-type Alert = { kind: string; text: string; severity: "warn" | "info" };
+type Alert = { kind: string; text: string; textAr?: string; severity: "warn" | "info" };
 type Row = {
   sessionId: string;
   studentId: string;
@@ -41,23 +42,26 @@ const HINT_CELL: Record<string, string> = {
   strong: "bg-warn text-white",
 };
 
-const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" });
+const fmtTime = (iso: string, locale: string) => new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+const fmtDate = (iso: string, locale: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "numeric" });
 
 export default function ClassPage() {
   const { id } = useParams<{ id: string }>();
   const { data, error, reload } = useStaffData<Dashboard>(`/api/staff/classes/${id}`, 15000);
-  const title = data?.class.name ?? data?.class.code ?? "כיתה";
+  const { L } = useStaffLang();
+  const title = data?.class.name ?? data?.class.code ?? L("כיתה", "صف");
   return (
     <StaffShell crumbs={[{ label: title }]}>
       {(me) =>
-        error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">טוען…</p> : <ClassView d={data} researcher={isResearcherRole(me.role)} reload={reload} />
+        error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">{L("טוען…", "جارٍ التحميل…")}</p> : <ClassView d={data} researcher={isResearcherRole(me.role)} reload={reload} />
       }
     </StaffShell>
   );
 }
 
 function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolean; reload: () => void }) {
+  const { L, lang, phase, locale } = useStaffLang();
+  const alertText = (a: Alert) => (lang === "ar" ? (a.textAr ?? a.text) : a.text);
   const [showQr, setShowQr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [summary, setSummary] = useState<{ loading: boolean; text: string; error: string } | null>(null);
@@ -67,10 +71,10 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
     const r = await fetch(`/api/staff/classes/${d.class.id}/summary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId: task?.id }),
+      body: JSON.stringify({ taskId: task?.id, lang }),
     });
     const j = await r.json().catch(() => ({}));
-    setSummary({ loading: false, text: j.summary ?? "", error: r.ok ? "" : (j.error ?? "שגיאה") });
+    setSummary({ loading: false, text: j.summary ?? "", error: r.ok ? "" : (j.error ?? L("שגיאה", "خطأ")) });
   }
 
   const [taskId, setTaskId] = useState(d.tasks[0]?.id ?? "");
@@ -86,19 +90,19 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
         <div>
           <h1 className="text-2xl font-bold">{d.class.name ?? d.class.code}</h1>
           <p className="mt-1 text-sm text-muted">
-            קוד כניסה לתלמידים:{" "}
+            {L("קוד כניסה לתלמידים", "رمز دخول الطلاب")}:{" "}
             <span dir="ltr" className="rounded bg-surface px-1.5 py-0.5 font-mono tracking-wider text-ink">
               {d.class.code}
             </span>{" "}
-            · מתעדכן כל 15 שניות
+            · {L("מתעדכן כל 15 שניות", "يتحدّث كل 15 ثانية")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setShowQr(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
-            📱 קוד וברקוד לכיתה
+            📱 {L("קוד וברקוד לכיתה", "رمز وباركود للصف")}
           </button>
           <button type="button" onClick={() => setShowSettings(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
-            ⚙️ הגדרות כיתה
+            ⚙️ {L("הגדרות כיתה", "إعدادات الصف")}
           </button>
           <button
             type="button"
@@ -106,7 +110,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
             disabled={summary?.loading || !rows.length}
             className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-50"
           >
-            ✨ מה כדאי לעשות בשיעור הבא?
+            ✨ {L("מה כדאי לעשות בשיעור הבא?", "ماذا نفعل في الدرس القادم؟")}
           </button>
           {d.tasks.length > 1 && (
             <select id="taskSelect" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm">
@@ -120,7 +124,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
           {researcher && (
             <>
               <a href={`/api/staff/export?classId=${d.class.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
-                קובץ מחקר (Excel)
+                {L("קובץ מחקר (Excel)", "ملف بحث (Excel)")}
               </a>
               <a href={`/api/staff/export?classId=${d.class.id}&format=json`} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:bg-surface">
                 JSON
@@ -133,13 +137,13 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
       {summary && (
         <section className="rounded-2xl border border-accent/30 bg-accent-soft/50 p-5">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="font-semibold">✨ סיכום הכיתה מ-MAX</h2>
+            <h2 className="font-semibold">✨ {L("סיכום הכיתה מ-MAX", "ملخّص الصف من MAX")}</h2>
             <button type="button" onClick={() => setSummary(null)} className="text-xs text-muted underline">
-              סגירה
+              {L("סגירה", "إغلاق")}
             </button>
           </div>
           {summary.loading ? (
-            <p className="animate-pulse text-sm text-muted">MAX קורא את העבודה של כל התלמידים… (כחצי דקה)</p>
+            <p className="animate-pulse text-sm text-muted">{L("MAX קורא את העבודה של כל התלמידים… (כחצי דקה)", "MAX يقرأ عمل جميع الطلاب… (نحو نصف دقيقة)")}</p>
           ) : summary.error ? (
             <p className="text-sm text-warn">{summary.error}</p>
           ) : (
@@ -148,10 +152,10 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
         </section>
       )}
 
-      <Modal open={showQr} onClose={() => setShowQr(false)} title="כניסה לכיתה" closeLabel="סגירה">
+      <Modal open={showQr} onClose={() => setShowQr(false)} title={L("כניסה לכיתה", "الدخول إلى الصف")} closeLabel={L("סגירה", "إغلاق")}>
         <ClassQr code={d.class.code} />
       </Modal>
-      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="הגדרות כיתה" closeLabel="סגירה">
+      <Modal open={showSettings} onClose={() => setShowSettings(false)} title={L("הגדרות כיתה", "إعدادات الصف")} closeLabel={L("סגירה", "إغلاق")}>
         {showSettings && (
           <SettingsForm
             classId={d.class.id}
@@ -165,15 +169,15 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
       </Modal>
 
       <dl className="tabular grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="תלמידים בכיתה" value={d.students.length} />
-        <Kpi label="עובדים עכשיו" value={active} tone={active ? "accent" : undefined} />
-        <Kpi label="סיימו" value={done} />
-        <Kpi label="צריכים תשומת לב" value={flagged.length} tone={flagged.length ? "warn" : undefined} />
+        <Kpi label={L("תלמידים בכיתה", "طلاب الصف")} value={d.students.length} />
+        <Kpi label={L("עובדים עכשיו", "يعملون الآن")} value={active} tone={active ? "accent" : undefined} />
+        <Kpi label={L("סיימו", "أنهوا")} value={done} />
+        <Kpi label={L("צריכים תשומת לב", "بحاجة إلى انتباه")} value={flagged.length} tone={flagged.length ? "warn" : undefined} />
       </dl>
 
       {flagged.length > 0 && (
         <section className="rounded-2xl border border-warn/30 bg-warn-soft/60 p-4">
-          <h2 className="mb-2 font-semibold text-warn">צריכים תשומת לב</h2>
+          <h2 className="mb-2 font-semibold text-warn">{L("צריכים תשומת לב", "بحاجة إلى انتباه")}</h2>
           <ul className="space-y-1.5 text-sm">
             {flagged.map((r) => (
               <li key={r.sessionId} className="flex flex-wrap items-center gap-2">
@@ -184,7 +188,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
                   .filter((a) => a.severity === "warn")
                   .map((a) => (
                     <span key={a.kind} className="rounded-full bg-surface px-2 py-0.5 text-xs text-warn">
-                      {a.text}
+                      {alertText(a)}
                     </span>
                   ))}
               </li>
@@ -194,26 +198,26 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
       )}
 
       <section className="space-y-2">
-        <h2 className="font-semibold">מפת הכיתה: תלמיד × שלב</h2>
+        <h2 className="font-semibold">{L("מפת הכיתה: תלמיד × שלב", "خريطة الصف: طالب × مرحلة")}</h2>
         {rows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-line p-6 text-muted">
-            עוד אין תלמידים שהתחילו את המשימה. תנו להם את הקוד <span dir="ltr" className="font-mono">{d.class.code}</span>.
+            {L("עוד אין תלמידים שהתחילו את המשימה. תנו להם את הקוד", "لم يبدأ أي طالب المهمة بعد. أعطوهم الرمز")} <span dir="ltr" className="font-mono">{d.class.code}</span>.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
             <table className="tabular w-full min-w-[760px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-xs text-muted">
-                  <th className="px-3 py-2 text-start font-medium">תלמיד/ה</th>
+                  <th className="px-3 py-2 text-start font-medium">{L("תלמיד/ה", "الطالب/ة")}</th>
                   {task?.phases.map((p, i) => (
                     <th key={p.id} className="px-1 py-2 text-center font-medium">
                       <span className="block">{i + 1}</span>
-                      <span className="block font-normal">{p.label}</span>
+                      <span className="block font-normal">{phase(p.id, p.label)}</span>
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-center font-medium">חזרות</th>
-                  <th className="px-3 py-2 text-center font-medium">הודעות</th>
-                  <th className="px-3 py-2 text-start font-medium">פעילות אחרונה</th>
+                  <th className="px-3 py-2 text-center font-medium">{L("חזרות", "عودات")}</th>
+                  <th className="px-3 py-2 text-center font-medium">{L("הודעות", "رسائل")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{L("פעילות אחרונה", "آخر نشاط")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -224,7 +228,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
                         {r.nickname}
                       </Link>
                       <span className="ms-2 text-xs text-muted">
-                        {r.status === "done" ? "סיים/ה" : "פעיל/ה"} · {fmtDate(r.startedAt)}
+                        {r.status === "done" ? L("סיים/ה", "أنهى/ت") : L("פעיל/ה", "نشط/ة")} · {fmtDate(r.startedAt, locale)}
                       </span>
                     </td>
                     {task?.phases.map((p) => {
@@ -235,7 +239,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
                       return (
                         <td key={p.id} className="px-1 py-1.5 text-center">
                           <span
-                            title={`${p.label}: ${n} הודעות${visits > 1 ? `, נכנס/ה ${visits} פעמים` : ""}${r.hints[p.id] ? `, הרמז החזק ביותר: ${r.hints[p.id]}` : ""}`}
+                            title={`${phase(p.id, p.label)}: ${n} ${L("הודעות", "رسائل")}${visits > 1 ? `, ${L("נכנס/ה", "دخل/ت")} ${visits} ${L("פעמים", "مرات")}` : ""}${r.hints[p.id] ? `, ${L("הרמז החזק ביותר", "أقوى تلميح")}: ${r.hints[p.id]}` : ""}`}
                             className={`inline-flex h-8 min-w-11 items-center justify-center gap-0.5 rounded-md px-1.5 ${cls} ${current ? "ring-2 ring-accent ring-offset-1" : ""}`}
                           >
                             {n || "·"}
@@ -246,7 +250,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
                     })}
                     <td className={`px-3 py-2 text-center ${r.backMoves ? "font-semibold text-warn" : "text-muted"}`}>{r.backMoves}</td>
                     <td className="px-3 py-2 text-center">{r.studentMessages}</td>
-                    <td className="px-3 py-2 text-muted">{fmtTime(r.lastActivity)}</td>
+                    <td className="px-3 py-2 text-muted">{fmtTime(r.lastActivity, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -254,11 +258,11 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
           </div>
         )}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-          <span>המספר = הודעות של התלמיד/ה בשלב</span>
-          <LegendSwatch cls="bg-ok-soft" text="הסתדר/ה עם רמז קל או בלי" />
-          <LegendSwatch cls="bg-warn-soft" text="קיבל/ה רמז בינוני" />
-          <LegendSwatch cls="bg-warn" text="קיבל/ה רמז חזק" />
-          <span>↺ = חזר/ה לשלב · מסגרת = השלב הנוכחי</span>
+          <span>{L("המספר = הודעות של התלמיד/ה בשלב", "الرقم = رسائل الطالب/ة في المرحلة")}</span>
+          <LegendSwatch cls="bg-ok-soft" text={L("הסתדר/ה עם רמז קל או בלי", "تدبّر/ت بتلميح خفيف أو بدونه")} />
+          <LegendSwatch cls="bg-warn-soft" text={L("קיבל/ה רמז בינוני", "تلقّى/ت تلميحًا متوسطًا")} />
+          <LegendSwatch cls="bg-warn" text={L("קיבל/ה רמז חזק", "تلقّى/ت تلميحًا قويًا")} />
+          <span>{L("↺ = חזר/ה לשלב · מסגרת = השלב הנוכחי", "↺ = عاد/ت إلى المرحلة · الإطار = المرحلة الحالية")}</span>
         </div>
       </section>
     </div>
@@ -289,6 +293,7 @@ type StudioTask = { id: string; title: string; status: string };
 function SettingsForm({ classId, initial, onSaved }: { classId: string; initial: ClassSettings; onSaved: () => void }) {
   const [settings, setSettings] = useState<ClassSettings>(initial);
   const [msg, setMsg] = useState("");
+  const { L, lang } = useStaffLang();
   const { data } = useStaffData<{ tasks: StudioTask[] }>("/api/studio");
   const published = (data?.tasks ?? []).filter((t) => t.status === "published");
   const allOpen = settings.tasks === null;
@@ -301,17 +306,17 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
       body: JSON.stringify({ settings }),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) setMsg(j.error ?? "השמירה נכשלה");
+    if (!r.ok) setMsg(j.error ?? L("השמירה נכשלה", "فشل الحفظ"));
     else onSaved();
   }
 
   return (
     <div className="space-y-6 text-sm">
       <section>
-        <h3 className="mb-2 font-semibold">משימות פתוחות בכיתה</h3>
+        <h3 className="mb-2 font-semibold">{L("משימות פתוחות בכיתה", "المهام المفتوحة في الصف")}</h3>
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={allOpen} onChange={(e) => setSettings({ ...settings, tasks: e.target.checked ? null : published.map((t) => t.id) })} />
-          כל המשימות שפורסמו (כולל חדשות מהסטודיו)
+          {L("כל המשימות שפורסמו (כולל חדשות מהסטודיו)", "كل المهام المنشورة (بما فيها الجديدة من الاستوديو)")}
         </label>
         {!allOpen && (
           <ul className="mt-2 space-y-1 rounded-xl border border-line p-3">
@@ -334,7 +339,7 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
       </section>
 
       <section>
-        <h3 className="mb-2 font-semibold">כלי עזר לתלמידים</h3>
+        <h3 className="mb-2 font-semibold">{L("כלי עזר לתלמידים", "أدوات مساعدة للطلاب")}</h3>
         <ul className="space-y-2">
           {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
             <li key={k}>
@@ -346,8 +351,8 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
                   onChange={(e) => setSettings({ ...settings, features: { ...settings.features, [k]: e.target.checked } })}
                 />
                 <span>
-                  <span className="font-medium">{FEATURES[k].he}</span>
-                  <span className="block text-xs text-muted">{FEATURES[k].desc}</span>
+                  <span className="font-medium">{lang === "ar" ? FEATURES[k].ar : FEATURES[k].he}</span>
+                  <span className="block text-xs text-muted">{lang === "ar" ? FEATURES[k].descAr : FEATURES[k].desc}</span>
                 </span>
               </label>
             </li>
@@ -356,21 +361,21 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
       </section>
 
       <section>
-        <h3 className="mb-2 font-semibold">רמז הכי חזק ש-MAX רשאי לתת</h3>
+        <h3 className="mb-2 font-semibold">{L("רמז הכי חזק ש-MAX רשאי לתת", "أقوى تلميح مسموح لـ MAX")}</h3>
         <select
           value={settings.maxHint}
           onChange={(e) => setSettings({ ...settings, maxHint: e.target.value as ClassSettings["maxHint"] })}
           className="rounded-lg border border-line bg-paper px-3 py-1.5"
         >
-          <option value="strong">חזק (ברירת מחדל): נותן מבנה, אף פעם לא את התשובה</option>
-          <option value="medium">בינוני: מכוון לרעיון בלי לתת מבנה</option>
-          <option value="light">קל בלבד: רק שאלות מכוונות</option>
+          <option value="strong">{L("חזק (ברירת מחדל): נותן מבנה, אף פעם לא את התשובה", "قوي (افتراضي): يعطي البنية، وليس الإجابة أبدًا")}</option>
+          <option value="medium">{L("בינוני: מכוון לרעיון בלי לתת מבנה", "متوسط: يوجّه إلى الفكرة دون إعطاء البنية")}</option>
+          <option value="light">{L("קל בלבד: רק שאלות מכוונות", "خفيف فقط: أسئلة موجِّهة فقط")}</option>
         </select>
       </section>
 
       {msg && <p className="rounded-lg bg-warn-soft px-3 py-2 text-warn">{msg}</p>}
       <button type="button" onClick={save} className="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-strong">
-        שמירה
+        {L("שמירה", "حفظ")}
       </button>
     </div>
   );

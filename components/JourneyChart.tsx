@@ -1,4 +1,5 @@
 "use client";
+import { useStaffLang } from "@/lib/staffLang";
 // The student's journey: one dot per student message, placed on the phase the analyzer coded it in.
 // Time runs right → left (RTL). Steps up = moving forward; orange dashed drops = going back to an earlier phase.
 
@@ -9,7 +10,11 @@ const PERF_CLASS: Record<string, string> = {
   partial: "fill-info",
   low: "fill-warn",
 };
-const PERF_LABEL: Record<string, string> = { high: "ביצוע גבוה", partial: "ביצוע חלקי", low: "ביצוע נמוך" };
+const PERF_LABEL: Record<string, [string, string]> = {
+  high: ["ביצוע גבוה", "أداء عالٍ"],
+  partial: ["ביצוע חלקי", "أداء جزئي"],
+  low: ["ביצוע נמוך", "أداء منخفض"],
+};
 
 export function JourneyChart({
   phases,
@@ -20,6 +25,7 @@ export function JourneyChart({
   points: Point[];
   onSelect?: (messageId: number) => void;
 }) {
+  const { L, phase } = useStaffLang();
   const P = phases.length;
   const rowH = 34;
   const labelW = 118;
@@ -34,7 +40,7 @@ export function JourneyChart({
   const y = (pi: number) => padT + (P - 1 - pi) * rowH + rowH / 2;
 
   if (!points.length) {
-    return <p className="text-sm text-muted">עוד אין הודעות מתויגות. המסע יופיע אחרי ההודעה הראשונה של התלמיד/ה.</p>;
+    return <p className="text-sm text-muted">{L("עוד אין הודעות מתויגות. המסע יופיע אחרי ההודעה הראשונה של התלמיד/ה.", "لا توجد رسائل مرمّزة بعد. سيظهر المسار بعد أول رسالة من الطالب/ة.")}</p>;
   }
 
   return (
@@ -45,7 +51,7 @@ export function JourneyChart({
           height={height}
           viewBox={`0 0 ${width} ${height}`}
           role="img"
-          aria-label="מסע התלמיד בין שלבי המידול"
+          aria-label={L("מסע התלמיד בין שלבי המידול", "مسار الطالب بين مراحل النمذجة")}
           className="block"
         >
           {/* phase rows */}
@@ -67,7 +73,7 @@ export function JourneyChart({
                 direction="rtl"
                 className="fill-muted text-[12px]"
               >
-                {pi + 1}. {p.label}
+                {pi + 1}. {phase(p.id, p.label)}
               </text>
             </g>
           ))}
@@ -102,7 +108,7 @@ export function JourneyChart({
               className={onSelect ? "cursor-pointer" : undefined}
             >
               <title>
-                {`הודעה ${pt.index} · ${phases[pt.phaseIndex]?.label ?? ""}${pt.performance ? " · " + PERF_LABEL[pt.performance] : ""}${pt.back ? " · חזרה לשלב קודם" : ""}`}
+                {`${L("הודעה", "رسالة")} ${pt.index} · ${phase(phases[pt.phaseIndex]?.id, phases[pt.phaseIndex]?.label ?? "")}${pt.performance && PERF_LABEL[pt.performance] ? " · " + L(...PERF_LABEL[pt.performance]) : ""}${pt.back ? " · " + L("חזרה לשלב קודם", "عودة إلى مرحلة سابقة") : ""}`}
               </title>
               <circle cx={x(i)} cy={y(pt.phaseIndex)} r={11} fill="transparent" />
               <circle
@@ -126,15 +132,15 @@ export function JourneyChart({
         </svg>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span>מספר הודעה של התלמיד/ה ←</span>
-        <Legend dot="bg-ok" text="ביצוע גבוה" />
-        <Legend dot="bg-info" text="חלקי" />
-        <Legend dot="bg-warn" text="נמוך" />
+        <span>{L("מספר הודעה של התלמיד/ה ←", "رقم رسالة الطالب/ة ←")}</span>
+        <Legend dot="bg-ok" text={L("ביצוע גבוה", "أداء عالٍ")} />
+        <Legend dot="bg-info" text={L("חלקי", "جزئي")} />
+        <Legend dot="bg-warn" text={L("נמוך", "منخفض")} />
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-0 border-s-2 border-dashed border-warn" />
-          חזרה לשלב קודם
+          {L("חזרה לשלב קודם", "عودة إلى مرحلة سابقة")}
         </span>
-        {onSelect && <span>· לחיצה על נקודה מקפיצה להודעה</span>}
+        {onSelect && <span>· {L("לחיצה על נקודה מקפיצה להודעה", "الضغط على نقطة ينقل إلى الرسالة")}</span>}
       </div>
     </div>
   );

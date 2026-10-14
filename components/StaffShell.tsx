@@ -4,9 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton } from "./BackButton";
+import { LangSwitch, useStaffLang } from "@/lib/staffLang";
 
 export type Me = { id: string; name: string; email: string; role: "teacher" | "researcher" | "admin" };
-const ROLE_LABEL: Record<Me["role"], string> = { teacher: "מורה", researcher: "חוקר/ת", admin: "מנהל/ת" };
+const ROLE_LABEL: Record<Me["role"], [string, string]> = {
+  teacher: ["מורה", "معلّم/ة"],
+  researcher: ["חוקר/ת", "باحث/ة"],
+  admin: ["מנהל/ת", "مدير/ة"],
+};
 
 export function useStaffData<T>(url: string | null, refreshMs = 0) {
   const router = useRouter();
@@ -57,6 +62,7 @@ export function StaffShell({
 }) {
   const router = useRouter();
   const { data: me } = useStaffData<Me>("/api/staff/me");
+  const { L } = useStaffLang();
 
   async function logout() {
     await fetch("/api/staff/logout", { method: "POST" });
@@ -68,7 +74,7 @@ export function StaffShell({
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <nav className="flex flex-wrap items-center gap-2 text-sm">
-            <BackButton fallback="/staff" className="me-1 py-1" />
+            <BackButton fallback="/staff" label={L("חזרה", "رجوع")} className="me-1 py-1" />
             <Link href="/staff" className="font-bold text-accent">
               MAX
             </Link>
@@ -88,23 +94,25 @@ export function StaffShell({
           {me && (
             <div className="flex items-center gap-3 text-sm">
               <Link href="/staff" className="rounded-lg px-2 py-1 hover:bg-paper">
-                כיתות
+                {L("כיתות", "الصفوف")}
               </Link>
               <Link href="/staff/studio" className="rounded-lg bg-accent-soft px-2.5 py-1 font-medium text-accent-strong hover:bg-accent/15">
-                ✨ סטודיו משימות
+                ✨ {L("סטודיו משימות", "استوديو المهام")}
               </Link>
+              <LangSwitch />
               <span aria-hidden className="text-line">|</span>
               <span>
-                {me.name} · <span className="text-muted">{ROLE_LABEL[me.role]}</span>
+                {me.name} · <span className="text-muted">{L(...ROLE_LABEL[me.role])}</span>
               </span>
               <button type="button" onClick={logout} className="rounded-lg border border-line px-3 py-1 hover:bg-paper">
-                יציאה
+                {L("יציאה", "خروج")}
               </button>
             </div>
           )}
+          {!me && <LangSwitch />}
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{me ? children(me) : <p className="text-muted">טוען…</p>}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6">{me ? children(me) : <p className="text-muted">{L("טוען…", "جارٍ التحميل…")}</p>}</main>
     </div>
   );
 }

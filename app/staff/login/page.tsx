@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import Link from "next/link";
+import { LangSwitch, useStaffLang } from "@/lib/staffLang";
 import { useRouter } from "next/navigation";
 
 export default function StaffLogin() {
@@ -10,6 +10,7 @@ export default function StaffLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const { L } = useStaffLang();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,21 +23,23 @@ export default function StaffLogin() {
     });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
-    if (!r.ok) setError(d.error ?? "הכניסה נכשלה");
+    if (!r.ok) setError(r.status === 401 ? L("מייל או סיסמה שגויים", "البريد أو كلمة المرور غير صحيحة") : (d.error ?? L("הכניסה נכשלה", "فشل الدخول")));
     else router.replace("/staff");
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-10">
-      <BackButton fallback="/" className="mb-6 self-start" />
-      <Link href="/" className="mb-6 text-sm text-muted hover:underline">
-        ← MAX
-      </Link>
-      <h1 className="mb-1 text-2xl font-bold">כניסת צוות</h1>
-      <p className="mb-6 text-sm text-muted">מורים וחוקרים. את החשבון פותח/ת מנהל/ת המערכת.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <BackButton fallback="/" label={L("חזרה", "رجوع")} />
+        <LangSwitch />
+      </div>
+      <h1 className="mb-1 text-2xl font-bold">{L("כניסת צוות", "دخول الطاقم")}</h1>
+      <p className="mb-6 text-sm text-muted">
+        {L("למורים ולחוקרות. את החשבון פותח/ת מנהל/ת המערכת.", "للمعلّمين والباحثات. مدير/ة النظام يفتح الحساب.")}
+      </p>
       <form onSubmit={submit} className="space-y-4 rounded-2xl border border-line bg-surface p-6">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">מייל</span>
+          <span className="text-sm font-medium">{L("מייל", "البريد الإلكتروني")}</span>
           <input
             id="email"
             type="email"
@@ -48,7 +51,7 @@ export default function StaffLogin() {
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">סיסמה</span>
+          <span className="text-sm font-medium">{L("סיסמה", "كلمة المرور")}</span>
           <input
             id="password"
             type="password"
@@ -65,7 +68,7 @@ export default function StaffLogin() {
           disabled={busy}
           className="w-full rounded-lg bg-accent px-4 py-2.5 font-semibold text-white hover:bg-accent-strong disabled:opacity-50"
         >
-          {busy ? "מתחבר/ת…" : "כניסה"}
+          {busy ? L("מתחבר/ת…", "جارٍ الدخول…") : L("כניסה", "دخول")}
         </button>
       </form>
     </main>

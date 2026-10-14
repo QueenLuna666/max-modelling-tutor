@@ -39,7 +39,13 @@ function transcript(d: SessionForSummary, max = 60): string {
     .join("\n");
 }
 
-async function write(prompt: string): Promise<string> {
+export type SummaryLang = "he" | "ar";
+
+const IN_ARABIC =
+  "\n\nIMPORTANT: write the whole summary in Arabic (clear Modern Standard Arabic for a teacher in an Arab school in Israel), not Hebrew. Translate the headings too: بإيجاز / نقاط القوة / أين تعثّر/ت / ماذا نفعل — or for a class: صورة الوضع / صعوبات شائعة / من يحتاج انتباهًا / اقتراح للدرس القادم. Phase names in Arabic: فهم المشكلة، تبسيط المشكلة، بناء نموذج رياضي، العمل الرياضي، تفسير النتائج، التحقق من النموذج.";
+
+async function write(prompt: string, lang: SummaryLang = "he"): Promise<string> {
+  if (lang === "ar") prompt += IN_ARABIC;
   const res = await llm().messages.create(
     { model: await model("tutor"), max_tokens: 3000, system: await loadPrompt("summary"), messages: [{ role: "user", content: prompt }] },
     { timeout: 90_000 },
@@ -50,7 +56,7 @@ async function write(prompt: string): Promise<string> {
     .trim();
 }
 
-export function summarizeSession(d: SessionForSummary): Promise<string> {
+export function summarizeSession(d: SessionForSummary, lang: SummaryLang = "he"): Promise<string> {
   const phaseName = d.phases.find((p) => p.id === d.session.currentPhase)?.label ?? d.session.currentPhase;
   return write(`Write a summary of ONE student's modelling process for the teacher.
 
@@ -69,7 +75,7 @@ Structure:
 ### חוזקות
 ### היכן נתקע/ה
 ### מה כדאי לעשות
-(2–3 concrete steps for the teacher, including one question to ask the student)`);
+(2–3 concrete steps for the teacher, including one question to ask the student)`, lang);
 }
 
 export type ClassForSummary = {
@@ -90,7 +96,7 @@ export type ClassForSummary = {
   }[];
 };
 
-export function summarizeClass(d: ClassForSummary): Promise<string> {
+export function summarizeClass(d: ClassForSummary, lang: SummaryLang = "he"): Promise<string> {
   const phaseName = new Map(d.phases.map((p) => [p.id, p.label]));
   const lines = d.students.map(
     (s) =>
@@ -113,5 +119,5 @@ Structure:
 ### מי צריך/ה תשומת לב
 (names + one line why)
 ### הצעה לשיעור הבא
-(2–3 concrete teaching moves, e.g. a whole-class discussion question, pairing students, a mini-lesson on a specific phase)`);
+(2–3 concrete teaching moves, e.g. a whole-class discussion question, pairing students, a mini-lesson on a specific phase)`, lang);
 }

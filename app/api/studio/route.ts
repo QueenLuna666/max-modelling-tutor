@@ -18,13 +18,14 @@ export async function GET() {
   const ids = new Set(rows.map((r) => r.id));
   const builtIns = Object.values(builtInTasks())
     .filter((tk) => !ids.has(tk.id))
-    .map((tk) => ({ id: tk.id, status: "published", title: t(tk.title, "he"), image: tk.card?.image ?? null, builtIn: true, updatedAt: null }));
+    .map((tk) => ({ id: tk.id, status: "published", title: t(tk.title, "he"), titleAr: t(tk.title, "ar"), image: tk.card?.image ?? null, builtIn: true, updatedAt: null }));
   return Response.json({
     tasks: [
       ...rows.map((r) => ({
         id: r.id,
         status: r.status,
         title: t(r.data.title, "he"),
+        titleAr: t(r.data.title, "ar"),
         image: r.data.card?.image ?? null,
         builtIn: r.id in builtInTasks(),
         updatedAt: r.updated_at,
@@ -37,7 +38,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const staff = await getStaff();
   if (!staff) return unauthorized();
-  const body = (await req.json().catch(() => ({}))) as { image?: unknown; description?: string; grade?: string };
+  const body = (await req.json().catch(() => ({}))) as { image?: unknown; description?: string; grade?: string; lang?: string };
   let image: AuthorImage | null;
   try {
     image = readImage(body.image);
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
       image,
       description,
       grade: body.grade,
+      noteLang: body.lang === "ar" ? "ar" : "he",
       onProgress: progressSender(send),
     });
     const now = new Date().toISOString();

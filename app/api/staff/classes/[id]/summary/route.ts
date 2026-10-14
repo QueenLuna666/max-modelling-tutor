@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const staff = await getStaff();
   if (!staff) return unauthorized();
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { taskId?: string };
+  const body = (await req.json().catch(() => ({}))) as { taskId?: string; lang?: string };
   const d = await classDashboard(staff, id);
   if (!("class" in d)) return d.error === 403 ? forbidden() : Response.json({ error: "Not found" }, { status: 404 });
 
@@ -48,7 +48,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           alerts: r.alerts.map((a) => a.text),
         };
       }),
-    });
+    }, body.lang === "ar" ? "ar" : "he");
     return Response.json({ summary });
   } catch (e) {
     console.error("class summary failed", e);

@@ -13,7 +13,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const staff = await getStaff();
   if (!staff) return unauthorized();
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { instruction?: string; image?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { instruction?: string; image?: unknown; lang?: string };
   const instruction = body.instruction?.trim().slice(0, 2000);
   if (!instruction) return Response.json({ error: "מה לשנות?" }, { status: 400 });
   let image: AuthorImage | null;
@@ -41,6 +41,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       history,
       instruction,
       image,
+      noteLang: body.lang === "ar" ? "ar" : "he",
       onProgress: progressSender(send),
     });
     const data = normalizeTask(raw, id, imageUrl);

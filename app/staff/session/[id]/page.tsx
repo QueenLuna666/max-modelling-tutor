@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { StaffShell, useStaffData } from "@/components/StaffShell";
 import { JourneyChart } from "@/components/JourneyChart";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
+import { useStaffLang } from "@/lib/staffLang";
 
 type Analysis = {
   performance: string | null;
@@ -65,20 +66,32 @@ type Detail = {
       completed: boolean;
     }[];
   };
-  alerts: { kind: string; text: string; severity: "warn" | "info" }[];
+  alerts: { kind: string; text: string; textAr?: string; severity: "warn" | "info" }[];
   messages: Message[];
   siblings: { id: string; taskTitle: string; status: string; startedAt: string }[];
 };
 
-const PERF: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
-const MOT: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
-const HINT: Record<string, string> = { none: "בלי רמז", light: "רמז קל", medium: "רמז בינוני", strong: "רמז חזק" };
-const SCAFFOLD: Record<string, string> = { in_step: "תמיכה בתוך שלב", transition: "מעבר בין שלבים", motivation: "הנעה" };
-const fmt = (iso: string) => new Date(iso).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+type Pair = [string, string]; // [Hebrew, Arabic]
+const PERF: Record<string, Pair> = { high: ["גבוה", "عالٍ"], partial: ["חלקי", "جزئي"], low: ["נמוך", "منخفض"] };
+const MOT: Record<string, Pair> = { high: ["גבוהה", "عالية"], low: ["נמוכה", "منخفضة"] };
+const HINT: Record<string, Pair> = {
+  none: ["בלי רמז", "بدون تلميح"],
+  light: ["רמז קל", "تلميح خفيف"],
+  medium: ["רמז בינוני", "تلميح متوسط"],
+  strong: ["רמז חזק", "تلميح قوي"],
+};
+const SCAFFOLD: Record<string, Pair> = {
+  in_step: ["תמיכה בתוך שלב", "دعم داخل المرحلة"],
+  transition: ["מעבר בין שלבים", "انتقال بين المراحل"],
+  motivation: ["הנעה", "تحفيز"],
+};
+const makeFmt = (locale: string) => (iso: string) =>
+  new Date(iso).toLocaleString(locale, { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const { data, error } = useStaffData<Detail>(`/api/staff/sessions/${id}`, 15000);
+  const { L } = useStaffLang();
   return (
     <StaffShell
       crumbs={
@@ -90,7 +103,7 @@ export default function SessionPage() {
           : []
       }
     >
-      {() => (error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">טוען…</p> : <SessionView d={data} />)}
+      {() => (error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">{L("טוען…", "جارٍ التحميل…")}</p> : <SessionView d={data} />)}
     </StaffShell>
   );
 }
@@ -98,7 +111,10 @@ export default function SessionPage() {
 function SessionView({ d }: { d: Detail }) {
   const [showAnalysis, setShowAnalysis] = useState(true);
   const [focus, setFocus] = useState<number | null>(null);
-  const label = (pid: string | null) => d.phases.find((p) => p.id === pid)?.label ?? pid ?? "";
+  const { L, lang, phase, locale } = useStaffLang();
+  const fmt = makeFmt(locale);
+  const P = (pair: Pair | undefined, raw: string | null | undefined) => (pair ? (lang === "ar" ? pair[1] : pair[0]) : (raw ?? "—"));
+  const label = (pid: string | null) => phase(pid, d.phases.find((p) => p.id === pid)?.label ?? pid ?? "");
   const phaseNo = (pid: string | null) => d.phases.findIndex((p) => p.id === pid) + 1;
 
   function jump(messageId: number) {
@@ -112,15 +128,16 @@ function SessionView({ d }: { d: Detail }) {
         <div>
           <h1 className="text-2xl font-bold">{d.student.nickname}</h1>
           <p className="mt-1 text-sm text-muted">
-            {d.session.taskTitle} · {d.session.status === "done" ? "סיים/ה" : "פעיל/ה"} · התחיל/ה {fmt(d.session.startedAt)}
-            {d.session.endedAt ? ` · סיים/ה ${fmt(d.session.endedAt)}` : ""} · {d.session.gender === "female" ? "בת" : "בן"} ·{" "}
-            {d.session.lang === "ar" ? "ערבית" : "עברית"}
+            {d.session.taskTitle} · {d.session.status === "done" ? L("סיים/ה", "أنهى/ت") : L("פעיל/ה", "نشط/ة")} · {L("התחיל/ה", "بدأ/ت")}{" "}
+            {fmt(d.session.startedAt)}
+            {d.session.endedAt ? ` · ${L("סיים/ה", "أنهى/ت")} ${fmt(d.session.endedAt)}` : ""} · {d.session.gender === "female" ? L("בת", "بنت") : L("בן", "ولد")} ·{" "}
+            {d.session.lang === "ar" ? L("ערבית", "العربية") : L("עברית", "العبرية")}
           </p>
         </div>
         {d.researcher && (
           <div className="flex gap-2">
             <a href={`/api/staff/export?sessionId=${d.session.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
-              קובץ מחקר (Excel)
+              {L("קובץ מחקר (Excel)", "ملف بحث (Excel)")}
             </a>
             <a href={`/api/staff/export?sessionId=${d.session.id}&format=json`} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:bg-surface">
               JSON
@@ -135,7 +152,7 @@ function SessionView({ d }: { d: Detail }) {
         <div className="flex flex-wrap gap-2">
           {d.alerts.map((a) => (
             <span key={a.kind} className={`rounded-full px-3 py-1 text-sm ${a.severity === "warn" ? "bg-warn-soft text-warn" : "bg-info-soft text-info"}`}>
-              {a.text}
+              {lang === "ar" ? (a.textAr ?? a.text) : a.text}
             </span>
           ))}
         </div>
@@ -143,14 +160,14 @@ function SessionView({ d }: { d: Detail }) {
 
       <dl className="tabular grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:grid-cols-8">
         {[
-          ["הודעות", d.metrics.studentMessages],
-          ["דקות", d.metrics.minutesTotal],
-          ["ממוצע מילים", d.metrics.avgWords],
-          ["תגובה ממוצעת (שנ׳)", d.metrics.avgResponseSec ?? "—"],
-          ["בקשות לתשובה", d.metrics.asksForAnswer],
-          ["תדירות קשיים", d.metrics.difficultiesTotal],
-          ["מגוון קשיים", d.metrics.difficultyDiversity],
-          ["מגוון מיומנויות", d.metrics.skillDiversity],
+          [L("הודעות", "رسائل"), d.metrics.studentMessages],
+          [L("דקות", "دقائق"), d.metrics.minutesTotal],
+          [L("ממוצע מילים", "معدّل الكلمات"), d.metrics.avgWords],
+          [L("תגובה ממוצעת (שנ׳)", "متوسط وقت الرد (ث)"), d.metrics.avgResponseSec ?? "—"],
+          [L("בקשות לתשובה", "طلبات للإجابة"), d.metrics.asksForAnswer],
+          [L("תדירות קשיים", "تكرار الصعوبات"), d.metrics.difficultiesTotal],
+          [L("מגוון קשיים", "تنوّع الصعوبات"), d.metrics.difficultyDiversity],
+          [L("מגוון מיומנויות", "تنوّع المهارات"), d.metrics.skillDiversity],
         ].map(([k, v]) => (
           <div key={String(k)} className="rounded-xl border border-line bg-surface px-3 py-2">
             <dd className="text-lg font-semibold">{v}</dd>
@@ -161,22 +178,22 @@ function SessionView({ d }: { d: Detail }) {
 
       {/* journey */}
       <section className="space-y-3">
-        <h2 className="font-semibold">המסע בין שלבי המידול</h2>
+        <h2 className="font-semibold">{L("המסע בין שלבי המידול", "المسار بين مراحل النمذجة")}</h2>
         <JourneyChart phases={d.phases} points={d.journey.points} onSelect={jump} />
         <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface lg:col-span-2">
             <table className="tabular w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-line text-xs text-muted">
-                  <th className="px-3 py-2 text-start font-medium">שלב</th>
-                  <th className="px-2 py-2 text-center font-medium">כניסות</th>
-                  <th className="px-2 py-2 text-center font-medium">הודעות</th>
-                  <th className="px-2 py-2 text-center font-medium">דקות</th>
-                  <th className="px-2 py-2 text-center font-medium">תדירות קשיים</th>
-                  <th className="px-2 py-2 text-center font-medium">מגוון קשיים</th>
-                  <th className="px-2 py-2 text-center font-medium">מגוון מיומנויות</th>
-                  <th className="px-3 py-2 text-start font-medium">קודים</th>
-                  <th className="px-2 py-2 text-center font-medium">הושלם</th>
+                  <th className="px-3 py-2 text-start font-medium">{L("שלב", "مرحلة")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("כניסות", "دخول")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("הודעות", "رسائل")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("דקות", "دقائق")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("תדירות קשיים", "تكرار الصعوبات")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("מגוון קשיים", "تنوّع الصعوبات")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("מגוון מיומנויות", "تنوّع المهارات")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{L("קודים", "رموز")}</th>
+                  <th className="px-2 py-2 text-center font-medium">{L("הושלם", "اكتملت")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,15 +229,15 @@ function SessionView({ d }: { d: Detail }) {
             </table>
           </div>
           <div className="rounded-2xl border border-line bg-surface p-4 text-sm">
-            <h3 className="mb-2 font-medium">חזרות לשלבים קודמים</h3>
+            <h3 className="mb-2 font-medium">{L("חזרות לשלבים קודמים", "عودات إلى مراحل سابقة")}</h3>
             {d.journey.backMoves.length === 0 ? (
-              <p className="text-muted">אין חזרות. התלמיד/ה התקדם/ה ברצף.</p>
+              <p className="text-muted">{L("אין חזרות. התלמיד/ה התקדם/ה ברצף.", "لا عودات. تقدّم/ت الطالب/ة بالتسلسل.")}</p>
             ) : (
               <ul className="space-y-1">
                 {d.journey.backMoves.map((b, i) => (
                   <li key={i}>
                     <button type="button" onClick={() => jump(d.journey.points[b.index - 1].messageId)} className="text-start hover:underline">
-                      הודעה {b.index}: מ<b>{label(b.from)}</b> חזר/ה ל<b>{label(b.to)}</b>
+                      {L("הודעה", "رسالة")} {b.index}: {L("מ", "من ")}<b>{label(b.from)}</b> {L("חזר/ה ל", "عاد/ت إلى ")}<b>{label(b.to)}</b>
                     </button>
                   </li>
                 ))}
@@ -233,11 +250,11 @@ function SessionView({ d }: { d: Detail }) {
       {/* transcript */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">השיחה המלאה</h2>
+          <h2 className="font-semibold">{L("השיחה המלאה", "المحادثة الكاملة")}</h2>
           {d.researcher && (
             <label className="flex items-center gap-2 text-sm">
               <input id="showAnalysis" type="checkbox" checked={showAnalysis} onChange={(e) => setShowAnalysis(e.target.checked)} />
-              להציג את הניתוח של כל הודעה
+              {L("להציג את הניתוח של כל הודעה", "عرض تحليل كل رسالة")}
             </label>
           )}
         </div>
@@ -265,32 +282,32 @@ function SessionView({ d }: { d: Detail }) {
                   <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">
                     {m.analysis ? (
                       <>
-                        <Tag k="ביצוע" v={PERF[m.analysis.performance ?? ""] ?? "—"} warn={m.analysis.performance === "low"} />
-                        <Tag k="מוטיבציה" v={MOT[m.analysis.motivation ?? ""] ?? "—"} warn={m.analysis.motivation === "low"} />
+                        <Tag k={L("ביצוע", "الأداء")} v={P(PERF[m.analysis.performance ?? ""], m.analysis.performance)} warn={m.analysis.performance === "low"} />
+                        <Tag k={L("מוטיבציה", "الدافعية")} v={P(MOT[m.analysis.motivation ?? ""], m.analysis.motivation)} warn={m.analysis.motivation === "low"} />
                         {m.analysis.challenge && (
-                          <Tag k="קושי" v={`${m.analysis.challenge} · ${d.challengeLabels[m.analysis.challenge] ?? ""}`} warn />
+                          <Tag k={L("קושי", "صعوبة")} v={`${m.analysis.challenge} · ${d.challengeLabels[m.analysis.challenge] ?? ""}`} warn />
                         )}
                         {m.analysis.skills?.map((c) => (
                           <span key={c} title={d.challengeLabels[c] ?? c} className="rounded-md bg-ok-soft px-1.5 py-0.5 text-ok">
                             {c} · {d.challengeLabels[c] ?? ""}
                           </span>
                         ))}
-                        {m.analysis.asksForAnswer && <Tag k="" v="ביקש/ה תשובה" warn />}
-                        {m.analysis.phaseComplete && <Tag k="" v="השלים/ה את השלב" />}
-                        <Tag k="מילים" v={String(m.wordCount ?? "—")} />
-                        {m.responseMs != null && <Tag k="זמן תגובה" v={`${Math.round(m.responseMs / 1000)} שנ׳`} />}
-                        {m.analysis.evidence && <span className="w-full text-muted">עדות: “{m.analysis.evidence}”</span>}
+                        {m.analysis.asksForAnswer && <Tag k="" v={L("ביקש/ה תשובה", "طلب/ت الإجابة")} warn />}
+                        {m.analysis.phaseComplete && <Tag k="" v={L("השלים/ה את השלב", "أكمل/ت المرحلة")} />}
+                        <Tag k={L("מילים", "كلمات")} v={String(m.wordCount ?? "—")} />
+                        {m.responseMs != null && <Tag k={L("זמן תגובה", "وقت الرد")} v={`${Math.round(m.responseMs / 1000)} ${L("שנ׳", "ث")}`} />}
+                        {m.analysis.evidence && <span className="w-full text-muted">{L("עדות", "دليل")}: “{m.analysis.evidence}”</span>}
                       </>
                     ) : (
-                      <span className="text-muted">אין ניתוח להודעה הזו</span>
+                      <span className="text-muted">{L("אין ניתוח להודעה הזו", "لا يوجد تحليل لهذه الرسالة")}</span>
                     )}
                   </div>
                 )}
                 {d.researcher && showAnalysis && !mine && (m.hintLevel || m.move) && (
                   <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line/70 pt-2 text-xs">
-                    {m.hintLevel && <Tag k="" v={HINT[m.hintLevel] ?? m.hintLevel} />}
-                    {m.scaffoldType && <Tag k="" v={SCAFFOLD[m.scaffoldType] ?? m.scaffoldType} />}
-                    {m.move && <Tag k="מהלך" v={m.move} />}
+                    {m.hintLevel && <Tag k="" v={P(HINT[m.hintLevel], m.hintLevel)} />}
+                    {m.scaffoldType && <Tag k="" v={P(SCAFFOLD[m.scaffoldType], m.scaffoldType)} />}
+                    {m.move && <Tag k={L("מהלך", "الخطوة")} v={m.move} />}
                   </div>
                 )}
               </li>
@@ -301,14 +318,14 @@ function SessionView({ d }: { d: Detail }) {
 
       {d.siblings.length > 1 && (
         <section className="text-sm">
-          <h2 className="mb-2 font-semibold">משימות נוספות של {d.student.nickname}</h2>
+          <h2 className="mb-2 font-semibold">{L("משימות נוספות של", "مهام أخرى لـ")} {d.student.nickname}</h2>
           <ul className="flex flex-wrap gap-2">
             {d.siblings
               .filter((s) => s.id !== d.session.id)
               .map((s) => (
                 <li key={s.id}>
                   <Link href={`/staff/session/${s.id}`} className="block rounded-lg border border-line bg-surface px-3 py-1.5 hover:border-accent">
-                    {s.taskTitle} · {fmt(s.startedAt)} · {s.status === "done" ? "סיים/ה" : "פעיל/ה"}
+                    {s.taskTitle} · {fmt(s.startedAt)} · {s.status === "done" ? L("סיים/ה", "أنهى/ت") : L("פעיל/ה", "نشط/ة")}
                   </Link>
                 </li>
               ))}
@@ -332,31 +349,36 @@ function ProcessSummary({ sessionId, saved }: { sessionId: string; saved: string
   const [text, setText] = useState(saved);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { L, lang } = useStaffLang();
   async function run() {
     setLoading(true);
     setError("");
-    const r = await fetch(`/api/staff/sessions/${sessionId}/summary`, { method: "POST" });
+    const r = await fetch(`/api/staff/sessions/${sessionId}/summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang }),
+    });
     const j = await r.json().catch(() => ({}));
     setLoading(false);
-    if (!r.ok) setError(j.error ?? "שגיאה");
+    if (!r.ok) setError(j.error ?? L("שגיאה", "خطأ"));
     else setText(j.summary);
   }
   return (
     <section className="rounded-2xl border border-accent/30 bg-accent-soft/50 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">✨ סיכום התהליך למורה</h2>
+        <h2 className="font-semibold">✨ {L("סיכום התהליך למורה", "ملخّص العملية للمعلّم/ة")}</h2>
         <button type="button" onClick={run} disabled={loading} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-50">
-          {loading ? "כותב…" : text ? "עדכון הסיכום" : "כתבו לי סיכום"}
+          {loading ? L("כותב…", "يكتب…") : text ? L("עדכון הסיכום", "تحديث الملخّص") : L("כתבו לי סיכום", "اكتب لي ملخّصًا")}
         </button>
       </div>
-      {loading && <p className="mt-2 animate-pulse text-sm text-muted">MAX קורא את כל השיחה ואת הקידוד… (כחצי דקה)</p>}
+      {loading && <p className="mt-2 animate-pulse text-sm text-muted">{L("MAX קורא את כל השיחה ואת הקידוד… (כחצי דקה)", "MAX يقرأ المحادثة كلها والترميز… (نحو نصف دقيقة)")}</p>}
       {error && <p className="mt-2 text-sm text-warn">{error}</p>}
       {text && !loading && (
         <div className="mt-3">
           <MiniMarkdown text={text} />
         </div>
       )}
-      {!text && !loading && <p className="mt-1 text-sm text-muted">סיכום קצר: איפה התלמיד/ה, חוזקות, היכן נתקע/ה ומה כדאי לעשות.</p>}
+      {!text && !loading && <p className="mt-1 text-sm text-muted">{L("סיכום קצר: איפה התלמיד/ה, חוזקות, היכן נתקע/ה ומה כדאי לעשות.", "ملخّص قصير: أين الطالب/ة، نقاط القوة، أين تعثّر/ت وماذا نفعل.")}</p>}
     </section>
   );
 }
