@@ -5,6 +5,7 @@ import { llm, model } from "./llm";
 import { loadPrompt } from "./prompts";
 import { codeLabel } from "./framework";
 import { logUsage } from "./limits";
+import { withoutDrawings } from "./messageFormat";
 
 type Msg = {
   role: string;
@@ -129,4 +130,51 @@ Structure:
 (names + one line why)
 ### הצעה לשיעור הבא
 (2–3 concrete teaching moves, e.g. a whole-class discussion question, pairing students, a mini-lesson on a specific phase)`, lang, audience);
+}
+
+// ---- Chat with the researcher (or teacher) about one student's thinking ----
+const ASK_SYSTEM = `You are a research assistant of the MtED mathematics-education lab (Technion). A researcher or a teacher asks you questions about ONE student who worked on an open mathematical modelling task with the AI tutor MAX. You have the full conversation, numbered, with the lab's coding of every student message (phase, performance level, overall pattern, skills, difficulty codes), and MAX's hint levels (H0–H4).
+How to answer:
+- Answer only from the data. Quote the student's own words with the message number, e.g. (#7 "…"). Never invent.
+- Distinguish what the student did independently from what followed MAX's hints or explanations (a correct answer right after MAX explained it is supported, not independent).
+- Say clearly when the data is not enough to answer, and what would be needed (e.g. a follow-up question to ask the student).
+- Be concise: a short paragraph or a few bullets. Plain language. Use ### headings only if the answer is long.
+- Answer in the language of the question (Hebrew or Arabic).`;
+
+export async function askAboutStudent(
+  d: SessionForSummary,
+  question: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  audience: Audience,
+): Promise<{ answer: string; usage: unknown; model: string }> {
+  let n = 0;
+  const phaseName = new Map(d.phases.map((p) => [p.id, p.label]));
+  const lines = d.messages.map((m) => {
+    const text = withoutDrawings(m.content, "[drawing]");
+    if (m.role !== "student") return `MAX${m.hintLevel ? ` [hint ${m.hintLevel}]` : ""}: ${text}`;
+    n += 1;
+    const a = m.analysis;
+    const tags =
+      a && audience === "researcher"
+        ? ` [phase: ${phaseName.get(m.phase ?? "") ?? m.phase}; level: ${a.level ?? a.performance}; pattern so far: ${a.studentPattern ?? "?"}${a.challenge ? `; difficulty: ${label(a.challenge)}` : ""}${a.skills?.length ? `; skills: ${a.skills.map(label).join(", ")}` : ""}]`
+        : "";
+    return `#${n} STUDENT${tags}: ${text}`;
+  });
+  const data = `Student: ${d.student.nickname} (${d.session.gender === "female" ? "בת" : "בן"}) · Task: ${d.session.taskTitle} · Status: ${d.session.status}
+Moves back to an earlier phase: ${d.journey.backMoves.length}
+
+Conversation:
+${lines.join("\n")}`;
+  const system = audience === "teacher" ? `${ASK_SYSTEM}\n${FOR_TEACHER}` : ASK_SYSTEM;
+  // Turns: the data + the first question, then the earlier answers and follow-ups, then the new question.
+  const turns = history.length
+    ? [{ role: "user" as const, content: `${data}\n\n---\nQuestion: ${history[0].content}` }, ...history.slice(1), { role: "user" as const, content: question }]
+    : [{ role: "user" as const, content: `${data}\n\n---\nQuestion: ${question}` }];
+  const m = await model("tutor");
+  const res = await llm().messages.create({ model: m, max_tokens: 3000, system, messages: turns }, { timeout: 90_000 });
+  const answer = res.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("")
+    .trim();
+  return { answer, usage: res.usage, model: m };
 }

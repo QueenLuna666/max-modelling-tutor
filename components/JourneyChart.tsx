@@ -128,6 +128,7 @@ export function JourneyChart({
           ))}
         </svg>
       </div>
+      <JourneyStory segs={segs} phases={phases} showLevels={showPerformance} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span>{L("נקודה = שינוי בשלב או ברמה · ×n = כמה הודעות ברצף · המספרים למטה = הודעות התלמיד/ה ←", "نقطة = تغيّر في المرحلة أو المستوى · ×n = عدد الرسائل المتتالية · الأرقام = رسائل الطالب/ة ←")}</span>
         {showPerformance && (
@@ -154,5 +155,38 @@ function Legend({ dot, text }: { dot: string; text: string }) {
       <span className={`inline-block size-2.5 rounded-full ${dot}`} />
       {text}
     </span>
+  );
+}
+
+// A verbal summary of the journey, built from the same points (no AI, instant).
+function JourneyStory({ segs, phases, showLevels }: { segs: Segment[]; phases: { id: string; label: string }[]; showLevels: boolean }) {
+  const { L, phase } = useStaffLang();
+  if (!segs.length) return null;
+  const name = (pi: number) => phase(phases[pi]?.id, phases[pi]?.label ?? "");
+  const lvl = (l: string | null) => (showLevels && l && LEVEL_LABEL[l] ? `, ${L(...LEVEL_LABEL[l])}` : "");
+  const msgs = (n: number) => (n === 1 ? L("הודעה אחת", "رسالة واحدة") : `${n} ${L("הודעות", "رسائل")}`);
+  const parts: string[] = [];
+  segs.forEach((sg, i) => {
+    const where = `${name(sg.phaseIndex)} (${msgs(sg.count)}${lvl(sg.level)})`;
+    if (i === 0) parts.push(`${L("התחיל/ה ב", "بدأ/ت في ")}${where}`);
+    else if (sg.phaseIndex === segs[i - 1].phaseIndex) parts.push(`${L("נשאר/ה ב", "بقي/ت في ")}${name(sg.phaseIndex)}${L(" והרמה השתנתה", " وتغيّر المستوى")}${lvl(sg.level)}`);
+    else if (sg.back) parts.push(`${L("חזר/ה ל", "عاد/ت إلى ")}${where}`);
+    else parts.push(`${L("עבר/ה ל", "انتقل/ت إلى ")}${where}`);
+  });
+  const seen = new Set(segs.map((s) => s.phaseIndex));
+  const furthest = Math.max(...segs.map((s) => s.phaseIndex));
+  const missing = phases.map((_, i) => i).filter((i) => !seen.has(i));
+  const backs = segs.filter((s) => s.back).length;
+  const story = [
+    `${parts.join(L("; ", "؛ "))}.`,
+    `${L("השלב הרחוק ביותר שנראה: ", "أبعد مرحلة ظهرت: ")}${name(furthest)}.`,
+    backs ? `${L("חזרות לשלב קודם: ", "عودات إلى مرحلة سابقة: ")}${backs}.` : L("ללא חזרות לשלב קודם.", "بدون عودات إلى مرحلة سابقة."),
+    missing.length ? `${L("לא נראתה עבודה ב: ", "لم يظهر عمل في: ")}${missing.map(name).join(L(", ", "، "))}.` : "",
+  ].filter(Boolean);
+  return (
+    <div className="rounded-xl bg-paper px-4 py-3 text-sm leading-relaxed">
+      <span className="font-semibold">{L("המסע במילים: ", "المسار بالكلمات: ")}</span>
+      {story.join(" ")}
+    </div>
   );
 }
