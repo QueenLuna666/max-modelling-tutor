@@ -23,6 +23,9 @@ export type StartResult = {
 export async function startSession(input: {
   classCode: string;
   nickname: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   gender: "male" | "female";
   taskId?: string;
   lang?: "he" | "ar" | "en";

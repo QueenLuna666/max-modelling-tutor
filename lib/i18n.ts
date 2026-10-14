@@ -17,14 +17,22 @@ const STRINGS = {
     he: "שם פרטי בלבד, בלי שם משפחה",
     ar: "الاسم الأول فقط، بدون اسم العائلة",
   },
+  firstName: { he: "שם פרטי", ar: "الاسم الشخصي" },
+  lastName: { he: "שם משפחה", ar: "اسم العائلة" },
+  phone: { he: "מספר טלפון", ar: "رقم الهاتف" },
+  phoneHint: {
+    he: "כך נזהה אותך גם בפעם הבאה. המספר משמש רק לזיהוי ולא מוצג לתלמידים אחרים.",
+    ar: "هكذا نتعرّف عليك في المرة القادمة أيضًا. الرقم يُستخدم للتعريف فقط ولا يُعرض للطلاب الآخرين.",
+  },
+  badPhone: { he: "מספר הטלפון לא נראה תקין (למשל 0521234567)", ar: "رقم الهاتف لا يبدو صحيحًا (مثلًا 0521234567)" },
   addressAs: { he: "איך לפנות אליך?", ar: "كيف نخاطبك؟" },
   boy: { he: "בן", ar: "ولد" },
   girl: { he: "בת", ar: "بنت" },
   language: { he: "שפה", ar: "اللغة" },
   enter: { he: "כניסה", ar: "دخول" },
   missingFields: {
-    he: "צריך למלא קוד כיתה, שם, ולבחור איך לפנות אליך",
-    ar: "يجب تعبئة رمز الصف والاسم واختيار طريقة المخاطبة",
+    he: "צריך למלא קוד כיתה, שם פרטי, שם משפחה, טלפון, ולבחור איך לפנות אליך",
+    ar: "يجب تعبئة رمز الصف والاسم الشخصي واسم العائلة والهاتف واختيار طريقة المخاطبة",
   },
   tasksTitle: { he: "המשימות שלי", ar: "مهامّي" },
   tasksIntro: {
@@ -118,7 +126,8 @@ export function saveUiLang(lang: UiLang) {
 }
 
 // Saved in sessionStorage after login, read by the student pages.
-export type StudentLogin = { classCode: string; nickname: string; gender: UiGender; lang: UiLang };
+// nickname = first name (what the pages show); firstName/lastName/phone identify the student.
+export type StudentLogin = { classCode: string; nickname: string; firstName?: string; lastName?: string; phone?: string; gender: UiGender; lang: UiLang };
 export const STUDENT_KEY = "max_student";
 
 export function readStudent(): StudentLogin | null {

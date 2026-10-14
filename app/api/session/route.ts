@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { openingFor, publicTask, type Gender, type Lang } from "@/lib/tasks";
 import { getTask } from "@/lib/taskStore";
 import { getLimits } from "@/lib/limits";
+import { normalizePhone } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const LANGS: Lang[] = ["he", "ar", "en"];
 const GENDERS: Gender[] = ["male", "female"];
 
 export async function POST(req: Request) {
-  let body: { classCode?: string; nickname?: string; gender?: string; taskId?: string; lang?: string };
+  let body: { classCode?: string; nickname?: string; firstName?: string; lastName?: string; phone?: string; gender?: string; taskId?: string; lang?: string };
   try {
     body = await req.json();
   } catch {
@@ -21,18 +22,25 @@ export async function POST(req: Request) {
   }
 
   const classCode = body.classCode?.trim().toUpperCase();
-  const nickname = body.nickname?.trim();
+  const firstName = body.firstName?.trim().slice(0, 30) || "";
+  const lastName = body.lastName?.trim().slice(0, 30) || "";
+  const phone = body.phone ? normalizePhone(body.phone) : null;
+  // The name staff see: "first last" (older logins sent only a first name).
+  const nickname = firstName && lastName ? `${firstName} ${lastName}` : body.nickname?.trim();
   const taskId = body.taskId ?? "speedometer";
   const lang: Lang = LANGS.includes(body.lang as Lang) ? (body.lang as Lang) : "he";
 
   if (!classCode || !nickname) {
     return NextResponse.json({ error: "צריך קוד כיתה ושם" }, { status: 400 });
   }
+  if (!firstName || !lastName || !phone) {
+    return NextResponse.json({ error: "צריך שם פרטי, שם משפחה ומספר טלפון תקין. חזרו למסך הכניסה. / يجب الاسم الشخصي واسم العائلة ورقم هاتف صحيح." }, { status: 400 });
+  }
   if (!GENDERS.includes(body.gender as Gender)) {
     return NextResponse.json({ error: "צריך לבחור איך לפנות אליך: בן או בת" }, { status: 400 });
   }
   const gender = body.gender as Gender;
-  if (nickname.length > 30) {
+  if (nickname.length > 61) {
     return NextResponse.json({ error: "השם ארוך מדי (עד 30 תווים)" }, { status: 400 });
   }
 
@@ -50,7 +58,8 @@ export async function POST(req: Request) {
   // Budget limits: number of students in the system, conversations per student per task.
   const limits = await getLimits();
   const ar = lang === "ar";
-  const { data: existing } = await db.from("students").select("id").eq("class_id", cls.id).eq("nickname", nickname).maybeSingle();
+  // The phone is the student's identity in the class: the same phone = the same student.
+  const { data: existing } = await db.from("students").select("id").eq("class_id", cls.id).eq("phone", phone).maybeSingle();
   if (!existing) {
     const { count } = await db.from("students").select("id", { count: "exact", head: true });
     if ((count ?? 0) >= limits.maxStudents) {
@@ -69,11 +78,24 @@ export async function POST(req: Request) {
     }
   }
 
-  const { data: student, error: stuErr } = await db
-    .from("students")
-    .upsert({ class_id: cls.id, nickname }, { onConflict: "class_id,nickname" })
-    .select("id")
-    .single();
+  let student: { id: string } | null = null;
+  let stuErr: { message: string } | null = null;
+  if (existing) {
+    // Same phone: same student. Keep the names up to date (staff may have set a display name separately).
+    await db.from("students").update({ first_name: firstName, last_name: lastName, nickname }).eq("id", existing.id);
+    student = existing;
+  } else {
+    ({ data: student, error: stuErr } = await db
+      .from("students")
+      .insert({ class_id: cls.id, nickname, first_name: firstName, last_name: lastName, phone })
+      .select("id")
+      .single());
+    if (stuErr && /column|schema cache/i.test(stuErr.message)) {
+      stuErr = { message: "Database update needed: run supabase/migration_007_identity.sql" };
+    } else if (stuErr && /duplicate|unique/i.test(stuErr.message)) {
+      stuErr = { message: "Database update needed: run supabase/migration_007_identity.sql (two students with the same name)" };
+    }
+  }
   if (stuErr || !student) return NextResponse.json({ error: stuErr?.message ?? "שגיאה" }, { status: 500 });
 
   const { data: session, error: sesErr } = await db

@@ -5,6 +5,7 @@ import { canSeeClass, isResearcher, type StaffSession } from "./auth";
 import { t, type Lang } from "./tasks";
 import { getTask, getTasks } from "./taskStore";
 import { normalizeSettings } from "./classSettings";
+import { maskPhone } from "./phone";
 import { codeLabels } from "./framework";
 import { sessionMetrics, type SessionMetrics } from "./metrics";
 import {
@@ -32,7 +33,7 @@ const MSG_COLS = "id, session_id, role, content, phase, word_count, response_ms,
 // "*" so the pages keep working before and after the skills column is added.
 const ANN_COLS = "*";
 
-type StudentRow = { id: string; class_id: string; nickname: string; display_name?: string | null; excluded?: boolean | null };
+type StudentRow = { id: string; class_id: string; nickname: string; display_name?: string | null; excluded?: boolean | null; phone?: string | null };
 // The name staff see: the edited name if someone set one, otherwise the name the student typed.
 export function displayName(s: { nickname: string; display_name?: string | null } | undefined | null): string {
   return s ? (s.display_name?.trim() || s.nickname) : "?";
@@ -161,6 +162,8 @@ export async function classDashboard(staff: StaffSession, classId: string) {
       studentId: s.student_id,
       nickname: displayName(byStudent.get(s.student_id)),
       excluded: byStudent.get(s.student_id)?.excluded === true,
+      // Researchers see the full phone (to match consent forms); teachers only the last digits.
+      phone: researcherView ? (byStudent.get(s.student_id)?.phone ?? null) : maskPhone(byStudent.get(s.student_id)?.phone) || null,
       taskId: s.task_id,
       lang: s.lang as Lang,
       gender: s.gender,

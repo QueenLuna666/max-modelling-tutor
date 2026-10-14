@@ -7,6 +7,7 @@ import { JourneyChart } from "@/components/JourneyChart";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
 import { MessageText } from "@/components/MessageText";
 import { AskPanel } from "@/components/AskPanel";
+import { ConversationReplay } from "@/components/ConversationReplay";
 import { useStaffLang } from "@/lib/staffLang";
 import { HINT_AR, HINT_HE } from "@/lib/hints";
 
@@ -119,6 +120,7 @@ export default function SessionPage() {
 function SessionView({ d }: { d: Detail }) {
   const [showAnalysis, setShowAnalysis] = useState(true);
   const [focus, setFocus] = useState<number | null>(null);
+  const [replay, setReplay] = useState(false);
   const { L, lang, phase, locale } = useStaffLang();
   const fmt = makeFmt(locale);
   const P = (pair: Pair | undefined, raw: string | null | undefined) => (pair ? (lang === "ar" ? pair[1] : pair[0]) : (raw ?? "—"));
@@ -143,6 +145,11 @@ function SessionView({ d }: { d: Detail }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {d.messages.length > 1 && (
+            <button type="button" onClick={() => setReplay(true)} className="btn-chunky rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-strong">
+              ▶️ {L("הקרנה חוזרת של השיחה", "إعادة عرض المحادثة")}
+            </button>
+          )}
           <a href={`/api/staff/transcript?sessionId=${d.session.id}`} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
             📄 {L("הורדת השיחה (Word)", "تنزيل المحادثة (Word)")}
           </a>
@@ -163,6 +170,18 @@ function SessionView({ d }: { d: Detail }) {
           </div>
         )}
       </div>
+
+      {replay && (
+        <ConversationReplay
+          messages={d.messages}
+          phases={d.phases}
+          researcher={d.researcher}
+          studentName={d.student.nickname}
+          phaseLabel={(pid) => (pid ? label(pid) : L("ללא שלב", "بلا مرحلة"))}
+          codeLabel={(c) => d.challengeLabels[c] ?? ""}
+          onClose={() => setReplay(false)}
+        />
+      )}
 
       <ProcessSummary sessionId={d.session.id} saved={d.session.summary ?? null} />
       <AskAboutStudent sessionId={d.session.id} name={d.student.nickname} researcher={d.researcher} />

@@ -23,7 +23,7 @@ export default function TaskLibrary() {
 
   useEffect(() => {
     const s = readStudent();
-    if (!s) {
+    if (!s || !s.phone) {
       router.replace("/student");
       return;
     }

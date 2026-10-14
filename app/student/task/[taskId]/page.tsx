@@ -42,7 +42,7 @@ export default function TaskWork() {
   // Start a new session, or resume the one saved for this task (page refresh).
   useEffect(() => {
     const s = readStudent();
-    if (!s) {
+    if (!s || !s.phone) {
       router.replace("/student");
       return;
     }

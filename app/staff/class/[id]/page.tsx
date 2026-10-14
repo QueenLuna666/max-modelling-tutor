@@ -15,6 +15,7 @@ type Row = {
   sessionId: string;
   studentId: string;
   nickname: string;
+  phone?: string | null;
   excluded?: boolean;
   lang?: string;
   gender?: string;
@@ -93,7 +94,7 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
         (s) =>
           (!task || s.taskId === task.id) &&
           (f.hidden || !s.excluded) &&
-          (!f.q || s.nickname.toLowerCase().includes(f.q.toLowerCase())) &&
+          (!f.q || s.nickname.toLowerCase().includes(f.q.toLowerCase()) || (s.phone ?? "").includes(f.q.replace(/\D/g, "") || "~")) &&
           (f.status === "all" || s.status === f.status) &&
           (f.lang === "all" || s.lang === f.lang) &&
           (f.gender === "all" || s.gender === f.gender) &&
@@ -119,6 +120,9 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/staff/class/${d.class.id}/live`} className="btn-chunky rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-strong">
+            📺 {L("מסך כיתה חי", "شاشة الصف الحية")}
+          </Link>
           <button type="button" onClick={() => setShowQr(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
             📱 {L("קוד וברקוד לכיתה", "رمز وباركود للصف")}
           </button>
@@ -449,7 +453,7 @@ function FilterBar({ f, setF, researcher, hiddenCount }: { f: Filters; setF: (f:
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-sm">
       <span className="font-medium">{L("סינון:", "تصفية:")}</span>
-      <input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} placeholder={L("חיפוש שם…", "بحث عن اسم…")} className={`${sel} w-36`} />
+      <input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} placeholder={L("חיפוש שם או טלפון…", "بحث عن اسم أو هاتف…")} className={`${sel} w-36`} />
       <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className={sel}>
         <option value="all">{L("כל הסטטוסים", "كل الحالات")}</option>
         <option value="active">{L("פעילים", "نشطون")}</option>
@@ -542,6 +546,11 @@ function NameCell({ row, onChanged }: { row: Row; onChanged: () => void }) {
       <Link href={`/staff/session/${row.sessionId}`} className="font-medium text-accent hover:underline">
         {row.nickname}
       </Link>
+      {row.phone && (
+        <span dir="ltr" className="text-[11px] text-muted tabular-nums">
+          {row.phone}
+        </span>
+      )}
       <button type="button" onClick={() => setEditing(true)} title={L("שינוי השם בדוחות", "تغيير الاسم في التقارير")} className="rounded px-1 text-xs text-muted hover:bg-paper">
         ✏️
       </button>

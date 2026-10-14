@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { readUiLang, saveUiLang, STUDENT_KEY, tr, type UiGender, type UiLang } from "@/lib/i18n";
 import { BackButton } from "@/components/BackButton";
 import { MaxMascot } from "@/components/MaxMascot";
+import { normalizePhone } from "@/lib/phone";
 
 export default function StudentLoginPage() {
   return (
@@ -28,20 +29,35 @@ function StudentLogin() {
     saveUiLang(l);
   };
   const [classCode, setClassCode] = useState(params.get("code") ?? "");
-  const [nickname, setNickname] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [gender, setGender] = useState<UiGender | null>(null);
   const [error, setError] = useState("");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!classCode.trim() || !nickname.trim() || !gender) {
+    if (!classCode.trim() || !firstName.trim() || !lastName.trim() || !phone.trim() || !gender) {
       setError(tr("missingFields", lang));
+      return;
+    }
+    const digits = normalizePhone(phone);
+    if (!digits) {
+      setError(tr("badPhone", lang));
       return;
     }
     try {
       sessionStorage.setItem(
         STUDENT_KEY,
-        JSON.stringify({ classCode: classCode.trim().toUpperCase(), nickname: nickname.trim(), gender, lang }),
+        JSON.stringify({
+          classCode: classCode.trim().toUpperCase(),
+          nickname: firstName.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: digits,
+          gender,
+          lang,
+        }),
       );
     } catch {
       /* storage blocked: the task page will send the student back here */
@@ -91,17 +107,32 @@ function StudentLogin() {
           <span className="block text-xs text-muted">{tr("classCodeHint", lang)}</span>
         </label>
 
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">{tr("firstName", lang)}</span>
+            <input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={30} autoComplete="given-name" className="w-full rounded-xl border-2 border-line bg-paper px-3 py-2.5 text-lg focus:border-accent" />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">{tr("lastName", lang)}</span>
+            <input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={30} autoComplete="family-name" className="w-full rounded-xl border-2 border-line bg-paper px-3 py-2.5 text-lg focus:border-accent" />
+          </label>
+        </div>
+
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">{tr("nickname", lang)}</span>
+          <span className="text-sm font-medium">{tr("phone", lang)}</span>
           <input
-            id="nickname"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            maxLength={30}
-            autoComplete="off"
-            className="w-full rounded-xl border-2 border-line bg-paper px-3 py-2.5 text-lg focus:border-accent"
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            dir="ltr"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={16}
+            autoComplete="tel"
+            placeholder="05X-XXXXXXX"
+            className="w-full rounded-xl border-2 border-line bg-paper px-3 py-2.5 text-lg tracking-wider focus:border-accent"
           />
-          <span className="block text-xs text-muted">{tr("nicknameHint", lang)}</span>
+          <span className="block text-xs text-muted">{tr("phoneHint", lang)}</span>
         </label>
 
         <fieldset className="space-y-1.5">
