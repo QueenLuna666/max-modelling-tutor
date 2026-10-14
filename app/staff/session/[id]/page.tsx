@@ -141,6 +141,16 @@ function SessionView({ d }: { d: Detail }) {
             {d.session.lang === "ar" ? L("ערבית", "العربية") : L("עברית", "العبرية")}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <a href={`/api/staff/transcript?sessionId=${d.session.id}`} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
+            📄 {L("הורדת השיחה (Word)", "تنزيل المحادثة (Word)")}
+          </a>
+          {d.researcher && (
+            <a href={`/api/staff/transcript?sessionId=${d.session.id}&analysis=1`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
+              📄 {L("השיחה עם הניתוח (Word)", "المحادثة مع التحليل (Word)")}
+            </a>
+          )}
+        </div>
         {d.researcher && (
           <div className="flex gap-2">
             <a href={`/api/staff/export?sessionId=${d.session.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">

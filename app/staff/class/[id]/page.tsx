@@ -122,8 +122,14 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
               ))}
             </select>
           )}
+          <a href={`/api/staff/transcript?classId=${d.class.id}`} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
+            📄 {L("כל השיחות (Word)", "كل المحادثات (Word)")}
+          </a>
           {researcher && (
             <>
+              <a href={`/api/staff/transcript?classId=${d.class.id}&analysis=1`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
+                📄 {L("שיחות עם ניתוח (Word)", "محادثات مع التحليل (Word)")}
+              </a>
               <a href={`/api/staff/export?classId=${d.class.id}&format=xlsx`} className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft">
                 {L("קובץ מחקר (Excel)", "ملف بحث (Excel)")}
               </a>
