@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { StaffShell, useStaffData } from "@/components/StaffShell";
+import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffShell";
 import { postStream, shrinkImage, type UploadImage } from "@/lib/clientMedia";
 import { STATUS_LABEL, STATUS_LABEL_AR, STATUS_STYLE } from "@/lib/studioUi";
 import { useStaffLang } from "@/lib/staffLang";
@@ -16,7 +16,13 @@ export default function StudioPage() {
 
 function StudioShell() {
   const { L } = useStaffLang();
-  return <StaffShell crumbs={[{ label: L("סטודיו משימות", "استوديو المهام") }]}>{() => <Studio />}</StaffShell>;
+  return (
+    <StaffShell crumbs={[{ label: L("סטודיו משימות", "استوديو المهام") }]}>
+      {(me) =>
+        isResearcherRole(me.role) ? <Studio /> : <p className="text-muted">{L("סטודיו המשימות פתוח לצוות המחקר בלבד.", "استوديو المهام مفتوح لطاقم البحث فقط.")}</p>
+      }
+    </StaffShell>
+  );
 }
 
 const EXPECTED_CHARS = 22000; // typical size of a full task, for the progress bar

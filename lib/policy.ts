@@ -43,6 +43,31 @@ const TABLE: Record<Performance, Record<Motivation, { move: Move; hint: HintLeve
 
 const LEVELS: HintLevel[] = ["none", "light", "medium", "strong"];
 
+// The weighting table and escalation rules, as data for the research export.
+export function policyTable() {
+  const rows: Record<string, Record<string, { move: Move; max_hint: HintLevel; instruction: string }>> = {};
+  for (const perf of Object.keys(TABLE) as Performance[]) {
+    rows[perf] = {};
+    for (const mot of Object.keys(TABLE[perf]) as Motivation[]) {
+      const c = TABLE[perf][mot];
+      rows[perf][mot] = { move: c.move, max_hint: c.hint, instruction: c.text };
+    }
+  }
+  return {
+    description: "performance (rows) × motivation (columns) → MAX's move and the strongest hint allowed",
+    table: rows,
+    asks_for_answer: { move: "refuse_answer_shrink", max_hint: "medium", instruction: "Kindly refuse to give the answer and make the next step smaller with one small hint." },
+    escalation_within_phase: [
+      "1st student message in a phase: at most a light hint",
+      "2nd message: at most a medium hint",
+      "3rd message and on: strong hint allowed",
+      "5+ messages in the same phase: one level stronger than the table",
+      "the class's teacher setting (maxHint) caps everything",
+    ],
+    hint_levels: LEVELS,
+  };
+}
+
 export function planResponse(input: {
   performance: Performance;
   motivation: Motivation;

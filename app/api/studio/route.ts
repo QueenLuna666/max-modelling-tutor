@@ -3,7 +3,7 @@
 //   Body: { image?: { data: base64, mediaType }, description?: string, grade?: string }
 //   Stream: {"progress": n} … then {"id": "..."} or {"error": "..."}
 import { randomBytes } from "node:crypto";
-import { getStaff, unauthorized } from "@/lib/auth";
+import { forbidden, getStaff, isResearcher, unauthorized } from "@/lib/auth";
 import { builtInTasks, t } from "@/lib/tasks";
 import { listRows, saveRow, uploadImage } from "@/lib/taskStore";
 import { normalizeTask, readImage, runTaskAuthor, type AuthorImage } from "@/lib/taskAuthor";
@@ -38,6 +38,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const staff = await getStaff();
   if (!staff) return unauthorized();
+  if (!isResearcher(staff)) return forbidden(); // the studio is for the research team
   const body = (await req.json().catch(() => ({}))) as { image?: unknown; description?: string; grade?: string; lang?: string };
   let image: AuthorImage | null;
   try {

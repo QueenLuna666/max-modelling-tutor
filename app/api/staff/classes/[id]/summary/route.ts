@@ -1,6 +1,6 @@
 // POST /api/staff/classes/:id/summary — AI summary of the class for planning the next lesson.
 // Body: { taskId? }  → { summary }
-import { forbidden, getStaff, unauthorized } from "@/lib/auth";
+import { forbidden, getStaff, isResearcher, unauthorized } from "@/lib/auth";
 import { classDashboard } from "@/lib/staffData";
 import { summarizeClass } from "@/lib/summaries";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -48,7 +48,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           alerts: r.alerts.map((a) => a.text),
         };
       }),
-    }, body.lang === "ar" ? "ar" : "he");
+    }, body.lang === "ar" ? "ar" : "he", isResearcher(staff) ? "researcher" : "teacher");
     return Response.json({ summary });
   } catch (e) {
     console.error("class summary failed", e);

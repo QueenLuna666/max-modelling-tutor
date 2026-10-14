@@ -20,10 +20,12 @@ export function JourneyChart({
   phases,
   points,
   onSelect,
+  showPerformance = true,
 }: {
   phases: { id: string; label: string }[];
   points: Point[];
   onSelect?: (messageId: number) => void;
+  showPerformance?: boolean; // teachers see the path, not the lab's performance coding
 }) {
   const { L, phase } = useStaffLang();
   const P = phases.length;
@@ -115,7 +117,7 @@ export function JourneyChart({
                 cx={x(i)}
                 cy={y(pt.phaseIndex)}
                 r={5.5}
-                className={`${pt.performance ? PERF_CLASS[pt.performance] : "fill-muted"} stroke-surface`}
+                className={`${showPerformance && pt.performance ? PERF_CLASS[pt.performance] : "fill-accent"} stroke-surface`}
                 strokeWidth={2}
               />
             </g>
@@ -133,9 +135,13 @@ export function JourneyChart({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span>{L("מספר הודעה של התלמיד/ה ←", "رقم رسالة الطالب/ة ←")}</span>
-        <Legend dot="bg-ok" text={L("ביצוע גבוה", "أداء عالٍ")} />
-        <Legend dot="bg-info" text={L("חלקי", "جزئي")} />
-        <Legend dot="bg-warn" text={L("נמוך", "منخفض")} />
+        {showPerformance && (
+          <>
+            <Legend dot="bg-ok" text={L("ביצוע גבוה", "أداء عالٍ")} />
+            <Legend dot="bg-info" text={L("חלקי", "جزئي")} />
+            <Legend dot="bg-warn" text={L("נמוך", "منخفض")} />
+          </>
+        )}
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-0 border-s-2 border-dashed border-warn" />
           {L("חזרה לשלב קודם", "عودة إلى مرحلة سابقة")}

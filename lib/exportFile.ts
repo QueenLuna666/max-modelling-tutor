@@ -3,6 +3,7 @@
 import ExcelJS from "exceljs";
 import { DIFFICULTIES, SKILLS, TRANSVERSAL, PHASES, codeLabel } from "./framework";
 import type { ExportSession } from "./staffData";
+import { policyTable } from "./policy";
 
 const PERF: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
 const MOT: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
@@ -296,49 +297,111 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
     "הקודים לקוחים מהמסמך 'הגדרות ומיומנויות של כל שלב מידול' של צוות המחקר (Wess et al., 2021; Schwartz-Aviad & Kohen, 2026).",
   );
 
+  const pol = policyTable();
+  const PERF_HE: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
+  const MOT_HE: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
+  const HINT_HE: Record<string, string> = { none: "בלי רמז", light: "קל", medium: "בינוני", strong: "חזק" };
+  sheet(
+    wb,
+    "טבלת שקלול",
+    [
+      { header: "ביצוע", key: "perf", width: 12 },
+      { header: "מוטיבציה", key: "mot", width: 12 },
+      { header: "המהלך של MAX", key: "move", width: 22 },
+      { header: "הרמז החזק ביותר", key: "hint", width: 16 },
+      { header: "ההנחיה ל-MAX", key: "instruction", width: 70, wrap: true },
+    ],
+    [
+      ...Object.entries(pol.table).flatMap(([perf, row]) =>
+        Object.entries(row).map(([mot, c]) => ({ perf: PERF_HE[perf] ?? perf, mot: MOT_HE[mot] ?? mot, move: c.move, hint: HINT_HE[c.max_hint] ?? c.max_hint, instruction: c.instruction })),
+      ),
+      { perf: "ביקש/ה תשובה", mot: "—", move: pol.asks_for_answer.move, hint: HINT_HE[pol.asks_for_answer.max_hint], instruction: pol.asks_for_answer.instruction },
+      ...pol.escalation_within_phase.map((r) => ({ perf: "הסלמה", mot: "", move: "", hint: "", instruction: r })),
+    ],
+    "כך הסוכן המאבחן והמדיניות מחליטים מה MAX עושה בכל הודעה: ביצוע × מוטיבציה → מהלך ורמז מרבי, עם הסלמה הדרגתית בתוך שלב.",
+  );
+
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
-// Structured JSON: one object per session with metrics, phases and the coded conversation.
+// The research JSON: one analyzer record per student message, in the same shape the team
+// designed in the blueprint (phase, performance, motivation, challenge, evidence,
+// asks_for_answer, lang), extended with the lab's codes and MAX's response to that message.
 export function toJson(sessions: ExportSession[]) {
   return {
     exported_at: new Date().toISOString(),
-    framework: "MtED modelling framework — 6 phases, skills U1–V8, difficulties D-U1–D-V5",
-    sessions: sessions.map((s) => ({
-      student: { name: s.name, class: s.classCode, language: s.lang, addressed_as: s.gender },
-      task: { id: s.taskId, title: s.taskTitle },
-      session: { id: s.sessionId, status: s.status, started_at: s.startedAt, ended_at: s.endedAt },
-      metrics: { ...s.metrics, perPhase: undefined },
-      phases: s.metrics.perPhase.map((p) => ({
-        ...p,
-        label: phaseName(s, p.phase),
-        difficultyCodes: p.difficultyCodes.map((c) => ({ code: c, label: codeLabel(c) })),
-        skillCodes: p.skillCodes.map((c) => ({ code: c, label: codeLabel(c) })),
-      })),
-      journey: s.journey.map((j) => ({ ...j, label: phaseName(s, j.phase) })),
-      conversation: s.messages.map((m) => ({
-        speaker: m.role === "student" ? "student" : "MAX",
-        at: m.created_at,
-        text: m.content,
-        ...(m.role === "student"
-          ? {
-              words: m.word_count,
-              response_seconds: m.response_ms == null ? null : Math.round(m.response_ms / 1000),
-              coding: m.analysis
-                ? {
-                    phase: m.analysis.phase,
-                    performance: m.analysis.performance,
-                    motivation: m.analysis.motivation,
-                    skills: (m.analysis.skills ?? []).map((c) => ({ code: c, label: codeLabel(c) })),
-                    difficulty: m.analysis.challenge ? { code: m.analysis.challenge, label: codeLabel(m.analysis.challenge) } : null,
-                    evidence: m.analysis.evidence,
-                    asks_for_answer: m.analysis.asks_for_answer,
-                    phase_complete: m.analysis.phase_complete,
-                  }
-                : null,
-            }
-          : { phase: m.phase, hint_level: m.hint_level, scaffold_type: m.scaffold_type, move: m.move }),
-      })),
-    })),
+    framework: "MtED modelling framework (Kohen lab): 6 phases, skills U1–V8 + cross-cutting X-, difficulties D-U1–D-V5 (Wess et al., 2021; TeDCI, Schwartz-Aviad & Kohen, 2026)",
+    record_fields: {
+      phase: "modelling phase the message is about (may differ from the phase MAX was guiding)",
+      performance: "high | partial | low",
+      motivation: "high | low",
+      challenge: "main difficulty code (D-…), or null",
+      evidence: "short quote from the student's message that justifies the coding",
+      asks_for_answer: "the student asked MAX for the answer",
+      lang: "language of the conversation (he | ar | en)",
+      skills: "skill codes the message gives evidence of",
+      phase_complete: "the message completes the phase MAX was guiding",
+      max_response: "what MAX did next, decided by the policy table",
+    },
+    policy: policyTable(),
+    codebook: {
+      phases: PHASES.map((p, i) => ({ order: i + 1, id: p.id, he: p.he, ar: p.ar, en: p.en, product: p.product })),
+      skills: Object.fromEntries([...SKILLS, ...TRANSVERSAL].map((x) => [x.code, { he: x.he, en: x.en }])),
+      difficulties: Object.fromEntries(DIFFICULTIES.map((d) => [d.code, { phase: d.phase, he: d.he, en: d.en }])),
+    },
+    sessions: sessions.map((s) => {
+      const records: Record<string, unknown>[] = [];
+      let n = 0;
+      s.messages.forEach((m, i) => {
+        if (m.role !== "student") return;
+        n += 1;
+        const a = m.analysis;
+        const reply = s.messages.slice(i + 1).find((x) => x.role !== "student");
+        records.push({
+          message_no: n,
+          at: m.created_at,
+          student_message: m.content,
+          // — the analyzer record (blueprint format) —
+          phase: a?.phase ?? m.phase,
+          performance: a?.performance ?? null,
+          motivation: a?.motivation ?? null,
+          challenge: a?.challenge ?? null,
+          evidence: a?.evidence ?? null,
+          asks_for_answer: a?.asks_for_answer ?? false,
+          lang: s.lang,
+          // — the lab's framework —
+          phase_label: phaseName(s, a?.phase ?? m.phase),
+          challenge_label: a?.challenge ? codeLabel(a.challenge) : null,
+          skills: a?.skills ?? [],
+          skills_labels: (a?.skills ?? []).map((c) => codeLabel(c)),
+          phase_complete: a?.phase_complete ?? false,
+          // — engagement signals —
+          word_count: m.word_count,
+          response_seconds: m.response_ms == null ? null : Math.round(m.response_ms / 1000),
+          // — what MAX did with it —
+          max_response: reply
+            ? { guided_phase: reply.phase, hint_level: reply.hint_level, move: reply.move, scaffold_type: reply.scaffold_type, text: reply.content }
+            : null,
+          coded: Boolean(a),
+        });
+      });
+      return {
+        session_id: s.sessionId,
+        student: s.name,
+        class: s.classCode,
+        gender: s.gender,
+        lang: s.lang,
+        task: { id: s.taskId, title: s.taskTitle },
+        status: s.status,
+        started_at: s.startedAt,
+        ended_at: s.endedAt,
+        metrics: {
+          ...s.metrics,
+          perPhase: s.metrics.perPhase.map((p) => ({ ...p, label: phaseName(s, p.phase) })),
+        },
+        journey: s.journey.map((j) => ({ ...j, label: phaseName(s, j.phase) })),
+        records,
+      };
+    }),
   };
 }

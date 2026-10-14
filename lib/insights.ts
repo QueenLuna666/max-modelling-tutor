@@ -137,7 +137,7 @@ export function sessionAlerts(
 
   const lastCodes = annotations.slice(-THRESHOLDS.lowMotivationStreak);
   if (lastCodes.length === THRESHOLDS.lowMotivationStreak && lastCodes.every((a) => a.motivation === "low")) {
-    alerts.push({ kind: "motivation", severity: "warn", text: "מוטיבציה נמוכה בהודעות האחרונות", textAr: "دافعية منخفضة في الرسائل الأخيرة" });
+    alerts.push({ kind: "motivation", severity: "warn", text: "נראה/ית פחות מעורב/ת בהודעות האחרונות", textAr: "يبدو/تبدو أقل انخراطًا في الرسائل الأخيرة" });
   }
 
   if (annotations.some((a) => a.phase === lastPhaseId)) {

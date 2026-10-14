@@ -12,7 +12,8 @@ const TEXT = {
     go: "יאללה, מתחילים",
     staff: "כניסת צוות",
     staffSub: "למורים ולחוקרות.",
-    staffGo: "להתחברות",
+    teachers: "כניסת מורים",
+    researchers: "כניסת חוקרות",
     lab: "מעבדת MtED, הפקולטה לחינוך למדע וטכנולוגיה, הטכניון",
   },
   ar: {
@@ -22,7 +23,8 @@ const TEXT = {
     go: "يلّا نبدأ",
     staff: "دخول الطاقم",
     staffSub: "للمعلّمين والباحثات.",
-    staffGo: "تسجيل الدخول",
+    teachers: "دخول المعلّمين",
+    researchers: "دخول الباحثات",
     lab: "مختبر MtED، كلية تدريس العلوم والتكنولوجيا، التخنيون",
   },
 };
@@ -81,11 +83,18 @@ export default function Home() {
                 {t.go}
               </span>
             </Link>
-            <Link href="/staff/login" className="group rounded-3xl border border-line bg-surface p-6 transition hover:border-accent">
+            <div className="rounded-3xl border border-line bg-surface p-6">
               <h2 className="text-2xl">{t.staff}</h2>
               <p className="mt-2 text-muted">{t.staffSub}</p>
-              <span className="mt-4 inline-block text-sm font-medium text-accent group-hover:underline">{t.staffGo}</span>
-            </Link>
+              <div className="mt-4 flex flex-col gap-2">
+                <Link href="/staff/login?as=teacher" className="rounded-xl border-2 border-accent px-4 py-2 text-center font-display font-semibold text-accent hover:bg-accent-soft">
+                  {t.teachers}
+                </Link>
+                <Link href="/staff/login?as=researcher" className="rounded-xl border-2 border-ink px-4 py-2 text-center font-display font-semibold text-ink hover:bg-paper">
+                  {t.researchers}
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
 

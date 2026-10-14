@@ -18,8 +18,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const full = isResearcher(staff) ? base : await sessionDetail({ ...staff, role: "admin" }, id);
   if ("error" in full) return Response.json({ error: "Not found" }, { status: 404 });
   try {
-    const summary = await summarizeSession(full as unknown as SessionForSummary, body.lang === "ar" ? "ar" : "he");
-    await supabaseAdmin().from("sessions").update({ summary }).eq("id", id);
+    const summary = await summarizeSession(full as unknown as SessionForSummary, body.lang === "ar" ? "ar" : "he", isResearcher(staff) ? "researcher" : "teacher");
+    // Saved per audience, so a teacher never sees the research version (with codes) and vice versa.
+    await supabaseAdmin().from("sessions").update({ summary: `[${isResearcher(staff) ? "researcher" : "teacher"}]\n${summary}` }).eq("id", id);
     return Response.json({ summary });
   } catch (e) {
     console.error("summary failed", e);

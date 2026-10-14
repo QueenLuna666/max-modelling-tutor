@@ -199,6 +199,8 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
   );
   const researcher = isResearcher(staff);
   const byMsg = new Map(annotations.map((a) => [a.message_id, a]));
+  const journey = buildJourney(phaseIds, messages, annotations);
+  const metrics = sessionMetrics(phaseIds, messages, annotations);
 
   // Other sessions of the same student, for navigation.
   const { data: siblings } = await db
@@ -222,12 +224,12 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
       currentPhase: s.current_phase,
       startedAt: s.started_at,
       endedAt: s.ended_at,
-      summary: (s.summary as string | null) ?? null,
+      summary: savedSummary(s.summary as string | null, researcher),
     },
     phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
-    challengeLabels: codeLabels(),
-    journey: buildJourney(phaseIds, messages, annotations),
-    metrics: sessionMetrics(phaseIds, messages, annotations),
+    challengeLabels: researcher ? codeLabels() : {},
+    journey: researcher ? journey : { ...journey, points: journey.points.map((p) => ({ ...p, performance: null })) },
+    metrics: researcher ? metrics : teacherMetrics(metrics),
     alerts: sessionAlerts(s.status, messages, annotations, phaseIds[phaseIds.length - 1] ?? ""),
     messages: messages.map((m) => {
       const a = m.role === "student" ? byMsg.get(m.id) : undefined;
@@ -355,4 +357,35 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
     sessions: out,
     name: filter.sessionId && first ? `${first.name}-${first.sessionId.slice(0, 8)}` : `class-${classCode}`,
   };
+}
+
+// What teachers see: activity and progress, without the lab's coding (performance, motivation,
+// difficulty and skill codes) that the research team keeps to itself.
+function teacherMetrics(m: ReturnType<typeof sessionMetrics>) {
+  return {
+    studentMessages: m.studentMessages,
+    minutesTotal: m.minutesTotal,
+    avgWords: m.avgWords,
+    avgResponseSec: m.avgResponseSec,
+    backMoves: m.backMoves,
+    furthestPhase: m.furthestPhase,
+    phasesCompleted: m.phasesCompleted,
+    hints: m.hints,
+    perPhase: m.perPhase.map((p) => ({
+      phase: p.phase,
+      visits: p.visits,
+      studentMessages: p.studentMessages,
+      minutes: p.minutes,
+      hints: p.hints,
+      completed: p.completed,
+    })),
+  };
+}
+
+// Summaries are saved with the audience they were written for ("[teacher]" / "[researcher]").
+function savedSummary(raw: string | null, researcher: boolean): string | null {
+  if (!raw) return null;
+  const m = raw.match(/^\[(teacher|researcher)\]\n/);
+  if (!m) return researcher ? raw : null;
+  return (m[1] === "researcher") === researcher ? raw.slice(m[0].length) : null;
 }

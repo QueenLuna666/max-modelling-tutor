@@ -1,7 +1,7 @@
 // POST /api/studio/:id/revise — ask the task agent to change the task.
 //   Body: { instruction: string, image?: { data, mediaType } }
 //   Stream: {"progress": n} … then {"ok": true, "note": "..."} or {"error": "..."}
-import { getStaff, unauthorized } from "@/lib/auth";
+import { forbidden, getStaff, isResearcher, unauthorized } from "@/lib/auth";
 import { builtInTasks } from "@/lib/tasks";
 import { getRow, saveRow, uploadImage, type StudioTurn } from "@/lib/taskStore";
 import { normalizeTask, readImage, runTaskAuthor, type AuthorImage } from "@/lib/taskAuthor";
@@ -12,6 +12,7 @@ export const maxDuration = 300;
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const staff = await getStaff();
   if (!staff) return unauthorized();
+  if (!isResearcher(staff)) return forbidden(); // the studio is for the research team
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as { instruction?: string; image?: unknown; lang?: string };
   const instruction = body.instruction?.trim().slice(0, 2000);

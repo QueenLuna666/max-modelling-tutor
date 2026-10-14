@@ -48,11 +48,12 @@ type Detail = {
     minutesTotal: number;
     avgWords: number;
     avgResponseSec: number | null;
-    shortAnswers: number;
-    asksForAnswer: number;
-    difficultiesTotal: number;
-    difficultyDiversity: number;
-    skillDiversity: number;
+    // research-only fields (absent for teachers)
+    shortAnswers?: number;
+    asksForAnswer?: number;
+    difficultiesTotal?: number;
+    difficultyDiversity?: number;
+    skillDiversity?: number;
     backMoves: number;
     hints: { light: number; medium: number; strong: number };
     perPhase: {
@@ -60,9 +61,9 @@ type Detail = {
       visits: number;
       studentMessages: number;
       minutes: number;
-      difficulties: number;
-      difficultyCodes: string[];
-      skillCodes: string[];
+      difficulties?: number;
+      difficultyCodes?: string[];
+      skillCodes?: string[];
       completed: boolean;
     }[];
   };
@@ -164,10 +165,17 @@ function SessionView({ d }: { d: Detail }) {
           [L("דקות", "دقائق"), d.metrics.minutesTotal],
           [L("ממוצע מילים", "معدّل الكلمات"), d.metrics.avgWords],
           [L("תגובה ממוצעת (שנ׳)", "متوسط وقت الرد (ث)"), d.metrics.avgResponseSec ?? "—"],
-          [L("בקשות לתשובה", "طلبات للإجابة"), d.metrics.asksForAnswer],
-          [L("תדירות קשיים", "تكرار الصعوبات"), d.metrics.difficultiesTotal],
-          [L("מגוון קשיים", "تنوّع الصعوبات"), d.metrics.difficultyDiversity],
-          [L("מגוון מיומנויות", "تنوّع المهارات"), d.metrics.skillDiversity],
+          ...(d.researcher
+            ? [
+                [L("בקשות לתשובה", "طلبات للإجابة"), d.metrics.asksForAnswer],
+                [L("תדירות קשיים", "تكرار الصعوبات"), d.metrics.difficultiesTotal],
+                [L("מגוון קשיים", "تنوّع الصعوبات"), d.metrics.difficultyDiversity],
+                [L("מגוון מיומנויות", "تنوّع المهارات"), d.metrics.skillDiversity],
+              ]
+            : [
+                [L("חזרות לשלב קודם", "عودات لمرحلة سابقة"), d.metrics.backMoves],
+                [L("רמזים חזקים", "تلميحات قوية"), d.metrics.hints.strong],
+              ]),
         ].map(([k, v]) => (
           <div key={String(k)} className="rounded-xl border border-line bg-surface px-3 py-2">
             <dd className="text-lg font-semibold">{v}</dd>
@@ -179,7 +187,7 @@ function SessionView({ d }: { d: Detail }) {
       {/* journey */}
       <section className="space-y-3">
         <h2 className="font-semibold">{L("המסע בין שלבי המידול", "المسار بين مراحل النمذجة")}</h2>
-        <JourneyChart phases={d.phases} points={d.journey.points} onSelect={jump} />
+        <JourneyChart phases={d.phases} points={d.journey.points} onSelect={jump} showPerformance={d.researcher} />
         <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface lg:col-span-2">
             <table className="tabular w-full min-w-[720px] text-sm">
@@ -189,10 +197,14 @@ function SessionView({ d }: { d: Detail }) {
                   <th className="px-2 py-2 text-center font-medium">{L("כניסות", "دخول")}</th>
                   <th className="px-2 py-2 text-center font-medium">{L("הודעות", "رسائل")}</th>
                   <th className="px-2 py-2 text-center font-medium">{L("דקות", "دقائق")}</th>
-                  <th className="px-2 py-2 text-center font-medium">{L("תדירות קשיים", "تكرار الصعوبات")}</th>
-                  <th className="px-2 py-2 text-center font-medium">{L("מגוון קשיים", "تنوّع الصعوبات")}</th>
-                  <th className="px-2 py-2 text-center font-medium">{L("מגוון מיומנויות", "تنوّع المهارات")}</th>
-                  <th className="px-3 py-2 text-start font-medium">{L("קודים", "رموز")}</th>
+                  {d.researcher && (
+                    <>
+                      <th className="px-2 py-2 text-center font-medium">{L("תדירות קשיים", "تكرار الصعوبات")}</th>
+                      <th className="px-2 py-2 text-center font-medium">{L("מגוון קשיים", "تنوّع الصعوبات")}</th>
+                      <th className="px-2 py-2 text-center font-medium">{L("מגוון מיומנויות", "تنوّع المهارات")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{L("קודים", "رموز")}</th>
+                    </>
+                  )}
                   <th className="px-2 py-2 text-center font-medium">{L("הושלם", "اكتملت")}</th>
                 </tr>
               </thead>
@@ -205,23 +217,27 @@ function SessionView({ d }: { d: Detail }) {
                     <td className={`px-2 py-1.5 text-center ${p.visits > 1 ? "font-semibold text-warn" : ""}`}>{p.visits}</td>
                     <td className="px-2 py-1.5 text-center">{p.studentMessages}</td>
                     <td className="px-2 py-1.5 text-center">{p.minutes}</td>
+                    {d.researcher && (
+                    <>
                     <td className={`px-2 py-1.5 text-center ${p.difficulties ? "text-warn" : ""}`}>{p.difficulties}</td>
-                    <td className="px-2 py-1.5 text-center">{p.difficultyCodes.length}</td>
-                    <td className="px-2 py-1.5 text-center">{p.skillCodes.length}</td>
+                    <td className="px-2 py-1.5 text-center">{p.difficultyCodes?.length ?? 0}</td>
+                    <td className="px-2 py-1.5 text-center">{p.skillCodes?.length ?? 0}</td>
                     <td className="px-3 py-1.5 text-xs">
                       <div className="flex flex-wrap gap-1">
-                        {p.difficultyCodes.map((c) => (
+                        {(p.difficultyCodes ?? []).map((c) => (
                           <span key={c} title={d.challengeLabels[c]} className="rounded bg-warn-soft px-1.5 text-warn">
                             {c}
                           </span>
                         ))}
-                        {p.skillCodes.map((c) => (
+                        {(p.skillCodes ?? []).map((c) => (
                           <span key={c} title={d.challengeLabels[c]} className="rounded bg-ok-soft px-1.5 text-ok">
                             {c}
                           </span>
                         ))}
                       </div>
                     </td>
+                    </>
+                    )}
                     <td className="px-2 py-1.5 text-center">{p.completed ? "✓" : ""}</td>
                   </tr>
                 ))}

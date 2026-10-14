@@ -2,7 +2,7 @@
 // PATCH /api/studio/:id — save manual edits and/or change status.
 //   Body: { data?: Task, status?: "draft" | "published" | "archived" }
 // Built-in tasks (speedometer) can be edited too: the first save stores a copy that overrides the file.
-import { getStaff, unauthorized } from "@/lib/auth";
+import { forbidden, getStaff, isResearcher, unauthorized } from "@/lib/auth";
 import { builtInTasks, type Task } from "@/lib/tasks";
 import { getRow, saveRow, type TaskStatus } from "@/lib/taskStore";
 import { normalizeTask } from "@/lib/taskAuthor";
@@ -12,6 +12,7 @@ const STATUSES: TaskStatus[] = ["draft", "published", "archived"];
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const staff = await getStaff();
   if (!staff) return unauthorized();
+  if (!isResearcher(staff)) return forbidden(); // the studio is for the research team
   const { id } = await ctx.params;
   const row = await getRow(id);
   if (row) return Response.json({ ...row, builtIn: id in builtInTasks() });
@@ -23,6 +24,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const staff = await getStaff();
   if (!staff) return unauthorized();
+  if (!isResearcher(staff)) return forbidden(); // the studio is for the research team
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as { data?: Task; status?: TaskStatus };
 

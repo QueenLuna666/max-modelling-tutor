@@ -3,7 +3,7 @@
 // edit by hand, replace the picture, approve and publish.
 import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { StaffShell, useStaffData } from "@/components/StaffShell";
+import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffShell";
 import { TaskCard } from "@/components/TaskCard";
 import { postStream, shrinkImage, type UploadImage } from "@/lib/clientMedia";
 import { STATUS_LABEL, STATUS_LABEL_AR, STATUS_STYLE, type TaskStatusUi } from "@/lib/studioUi";
@@ -53,7 +53,7 @@ export default function StudioTaskPage() {
   const { L } = useStaffLang();
   return (
     <StaffShell crumbs={[{ href: "/staff/studio", label: L("סטודיו משימות", "استوديو المهام") }, { label: id }]}>
-      {() => <Editor id={id} />}
+      {(me) => (isResearcherRole(me.role) ? <Editor id={id} /> : <p className="text-muted">{L("סטודיו המשימות פתוח לצוות המחקר בלבד.", "استوديو المهام مفتوح لطاقم البحث فقط.")}</p>)}
     </StaffShell>
   );
 }

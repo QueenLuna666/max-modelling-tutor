@@ -1,16 +1,29 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { LangSwitch, useStaffLang } from "@/lib/staffLang";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function StaffLogin() {
+type Door = "teacher" | "researcher";
+
+export default function StaffLoginPage() {
+  return (
+    <Suspense>
+      <StaffLogin />
+    </Suspense>
+  );
+}
+
+// Two doors: teachers (dashboards, follow students) and researchers (also analyses, coding and research files).
+function StaffLogin() {
   const router = useRouter();
+  const params = useSearchParams();
+  const [door, setDoor] = useState<Door>(params.get("as") === "researcher" ? "researcher" : "teacher");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { L } = useStaffLang();
+  const { L, lang } = useStaffLang();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,7 +32,7 @@ export default function StaffLogin() {
     const r = await fetch("/api/staff/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, as: door, lang }),
     });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
@@ -33,9 +46,28 @@ export default function StaffLogin() {
         <BackButton fallback="/" label={L("חזרה", "رجوع")} />
         <LangSwitch />
       </div>
-      <h1 className="mb-1 text-2xl font-bold">{L("כניסת צוות", "دخول الطاقم")}</h1>
+      <div role="tablist" className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-surface p-1 ring-1 ring-line">
+        {(["teacher", "researcher"] as const).map((d) => (
+          <button
+            key={d}
+            role="tab"
+            type="button"
+            aria-selected={door === d}
+            onClick={() => {
+              setDoor(d);
+              setError("");
+            }}
+            className={`rounded-xl px-3 py-2 font-display font-semibold ${door === d ? "bg-accent text-white" : "text-muted hover:text-ink"}`}
+          >
+            {d === "teacher" ? L("מורים", "المعلّمون") : L("חוקרות", "الباحثات")}
+          </button>
+        ))}
+      </div>
+      <h1 className="mb-1 text-2xl font-bold">{door === "teacher" ? L("כניסת מורים", "دخول المعلّمين") : L("כניסת חוקרות", "دخول الباحثات")}</h1>
       <p className="mb-6 text-sm text-muted">
-        {L("למורים ולחוקרות. את החשבון פותח/ת מנהל/ת המערכת.", "للمعلّمين والباحثات. مدير/ة النظام يفتح الحساب.")}
+        {door === "teacher"
+          ? L("הכיתות שלך, מעקב אחרי התלמידים בזמן אמת וסיכומים.", "صفوفك، ومتابعة الطلاب في الوقت الحقيقي، وملخّصات.")
+          : L("כל הכיתות, הניתוח המלא, סטודיו המשימות וקבצי המחקר.", "كل الصفوف، والتحليل الكامل، واستوديو المهام، وملفات البحث.")}
       </p>
       <form onSubmit={submit} className="space-y-4 rounded-2xl border border-line bg-surface p-6">
         <label className="block space-y-1.5">
