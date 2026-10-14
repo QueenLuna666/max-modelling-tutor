@@ -1,6 +1,8 @@
 // POST /api/studio/:id/revise — ask the task agent to change the task.
-//   Body: { instruction: string, image?: { data, mediaType } }
+//   Body: { instruction: string, image?: { data, mediaType }, asNew?: boolean }
+//   asNew (default true): the change is saved as a NEW draft task; the current task is not touched.
 //   Stream: {"progress": n} … then {"ok": true, "note": "..."} or {"error": "..."}
+import { randomBytes } from "node:crypto";
 import { forbidden, getStaff, isResearcher, unauthorized } from "@/lib/auth";
 import { builtInTasks } from "@/lib/tasks";
 import { getRow, saveRow, uploadImage, type StudioTurn } from "@/lib/taskStore";
@@ -15,7 +17,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!staff) return unauthorized();
   if (!isResearcher(staff)) return forbidden(); // the studio is for the research team
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { instruction?: string; image?: unknown; lang?: string };
+  const body = (await req.json().catch(() => ({}))) as { instruction?: string; image?: unknown; lang?: string; asNew?: boolean };
+  const asNew = body.asNew !== false;
   const instruction = body.instruction?.trim().slice(0, 2000);
   if (!instruction) return Response.json({ error: "מה לשנות?" }, { status: 400 });
   let image: AuthorImage | null;
@@ -52,9 +55,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       onProgress: progressSender(send),
     });
     void logUsage("studio", usedModel, usage, { staffId: staff.id });
-    const data = normalizeTask(raw, id, imageUrl);
-    if (builtIn) data.image = builtIn.image; // keep the original scanned card for the built-in task
+    const targetId = asNew ? `t-${randomBytes(3).toString("hex")}` : id;
+    const data = normalizeTask(raw, targetId, imageUrl);
+    if (builtIn && !asNew) data.image = builtIn.image; // keep the original scanned card for the built-in task
     const now = new Date().toISOString();
+    if (asNew) {
+      await saveRow({
+        id: targetId,
+        status: "draft",
+        data,
+        source: { image_url: imageUrl, derived_from: id, chat: [{ role: "author", content: instruction, at: now }, { role: "agent", content: note, at: now }] },
+        created_by: staff.id,
+      });
+      send({ ok: true, note, id: targetId });
+      return;
+    }
     const chat: StudioTurn[] = [
       ...history,
       { role: "author", content: instruction, at: now },

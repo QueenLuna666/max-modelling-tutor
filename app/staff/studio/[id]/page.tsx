@@ -2,7 +2,8 @@
 // One task in the studio: preview as students see it, talk with the task agent to change it,
 // edit by hand, replace the picture, approve and publish.
 import { useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffShell";
 import { TaskCard } from "@/components/TaskCard";
 import { postStream, shrinkImage, type UploadImage } from "@/lib/clientMedia";
@@ -126,6 +127,9 @@ function Editor({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/staff/studio" className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong">
+            ➕ {L("משימה חדשה", "مهمة جديدة")}
+          </Link>
           <a
             href={`/student?task=${id}&code=DEMO1`}
             target="_blank"
@@ -363,6 +367,8 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const { L, lang } = useStaffLang();
+  const router = useRouter();
+  const [asNew, setAsNew] = useState(true); // by default a change creates a new task; the current one stays
 
   async function send(text: string) {
     const instruction = text.trim();
@@ -371,15 +377,16 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
     setInput("");
     setBusy({ stage: L("הסוכן קורא את הבקשה…", "الوكيل يقرأ الطلب…"), pct: 5, asked: instruction });
     try {
-      await postStream<{ stage?: string; progress?: number }>(
+      const last = await postStream<{ stage?: string; progress?: number; id?: string }>(
         `/api/studio/${id}/revise`,
-        { instruction, image: image ? { data: image.data, mediaType: image.mediaType } : null, lang },
+        { instruction, image: image ? { data: image.data, mediaType: image.mediaType } : null, lang, asNew },
         (ev) => {
           if (ev.progress) setBusy((b) => b && { ...b, stage: L("כותב מחדש את המשימה…", "يعيد كتابة المهمة…"), pct: Math.min(96, 8 + (ev.progress! / EXPECTED_CHARS) * 88) });
         },
       );
       setImage(null);
-      onDone();
+      if (last.id && last.id !== id) router.push(`/staff/studio/${last.id}`);
+      else onDone();
     } catch (e) {
       setErr((e as Error).message);
       setInput(instruction);
@@ -393,6 +400,19 @@ function AgentChat({ id, chat, onDone }: { id: string; chat: Turn[]; onDone: () 
       <div className="border-b border-line px-4 py-3">
         <h2 className="font-semibold">{L("שיחה עם סוכן המשימות", "محادثة مع وكيل المهام")}</h2>
         <p className="text-xs text-muted">{L("בקשו שינוי במילים שלכן. הסוכן כותב מחדש את המשימה כולה ושומר על העקביות שלה.", "اطلبوا تغييرًا بكلماتكم. الوكيل يعيد كتابة المهمة كلها ويحافظ على اتساقها.")}</p>
+        <div role="radiogroup" className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-paper p-1 text-xs">
+          <button type="button" role="radio" aria-checked={asNew} onClick={() => setAsNew(true)} className={`rounded-lg px-2 py-1.5 ${asNew ? "bg-surface font-semibold text-accent shadow-sm" : "text-muted"}`}>
+            {L("✨ ליצור משימה חדשה", "✨ إنشاء مهمة جديدة")}
+          </button>
+          <button type="button" role="radio" aria-checked={!asNew} onClick={() => setAsNew(false)} className={`rounded-lg px-2 py-1.5 ${!asNew ? "bg-surface font-semibold text-accent shadow-sm" : "text-muted"}`}>
+            {L("✏️ לעדכן את המשימה הזו", "✏️ تحديث هذه المهمة")}
+          </button>
+        </div>
+        <p className="mt-1 text-[11px] text-muted">
+          {asNew
+            ? L("השינוי יישמר כטיוטה חדשה; המשימה הנוכחית לא תשתנה.", "سيُحفظ التغيير كمسودة جديدة؛ المهمة الحالية لن تتغيّر.")
+            : L("השינוי ידרוס את המשימה הנוכחית.", "سيستبدل التغيير المهمة الحالية.")}
+        </p>
       </div>
       <div className="max-h-[50vh] space-y-2 overflow-y-auto px-4 py-3 text-sm">
         {chat.length === 0 && <p className="text-muted">{L("עוד אין שיחה על המשימה הזו.", "لا توجد محادثة حول هذه المهمة بعد.")}</p>}

@@ -16,7 +16,7 @@ export type TaskRow = {
   updated_at: string;
 };
 export type StudioTurn = { role: "author" | "agent"; content: string; at: string };
-export type TaskSource = { description?: string; image_url?: string | null; grade?: string; chat?: StudioTurn[] };
+export type TaskSource = { description?: string; image_url?: string | null; grade?: string; derived_from?: string; chat?: StudioTurn[] };
 
 // Small per-instance cache, so a chat turn doesn't hit the database for the task every time.
 const TTL_MS = 20_000;
