@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StaffShell, useStaffData } from "@/components/StaffShell";
 import { JourneyChart } from "@/components/JourneyChart";
+import { MiniMarkdown } from "@/components/MiniMarkdown";
 
 type Analysis = {
   performance: string | null;
@@ -31,7 +32,7 @@ type Detail = {
   researcher: boolean;
   class: { id: string; code: string; name: string | null };
   student: { id: string; nickname: string };
-  session: { id: string; taskTitle: string; lang: string; gender: string; status: string; currentPhase: string; startedAt: string; endedAt: string | null };
+  session: { id: string; taskTitle: string; lang: string; gender: string; status: string; currentPhase: string; startedAt: string; endedAt: string | null; summary?: string | null };
   phases: { id: string; label: string }[];
   challengeLabels: Record<string, string>;
   journey: {
@@ -127,6 +128,8 @@ function SessionView({ d }: { d: Detail }) {
           </div>
         )}
       </div>
+
+      <ProcessSummary sessionId={d.session.id} saved={d.session.summary ?? null} />
 
       {d.alerts.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -322,5 +325,38 @@ function Tag({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
       {k && <span className="opacity-75">{k}: </span>}
       {v}
     </span>
+  );
+}
+
+function ProcessSummary({ sessionId, saved }: { sessionId: string; saved: string | null }) {
+  const [text, setText] = useState(saved);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  async function run() {
+    setLoading(true);
+    setError("");
+    const r = await fetch(`/api/staff/sessions/${sessionId}/summary`, { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    setLoading(false);
+    if (!r.ok) setError(j.error ?? "שגיאה");
+    else setText(j.summary);
+  }
+  return (
+    <section className="rounded-2xl border border-accent/30 bg-accent-soft/50 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">✨ סיכום התהליך למורה</h2>
+        <button type="button" onClick={run} disabled={loading} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-50">
+          {loading ? "כותב…" : text ? "עדכון הסיכום" : "כתבו לי סיכום"}
+        </button>
+      </div>
+      {loading && <p className="mt-2 animate-pulse text-sm text-muted">MAX קורא את כל השיחה ואת הקידוד… (כחצי דקה)</p>}
+      {error && <p className="mt-2 text-sm text-warn">{error}</p>}
+      {text && !loading && (
+        <div className="mt-3">
+          <MiniMarkdown text={text} />
+        </div>
+      )}
+      {!text && !loading && <p className="mt-1 text-sm text-muted">סיכום קצר: איפה התלמיד/ה, חוזקות, היכן נתקע/ה ומה כדאי לעשות.</p>}
+    </section>
   );
 }

@@ -4,6 +4,7 @@ import { supabaseAdmin } from "./supabase";
 import { canSeeClass, isResearcher, type StaffSession } from "./auth";
 import { t, type Lang } from "./tasks";
 import { getTask, getTasks } from "./taskStore";
+import { normalizeSettings } from "./classSettings";
 import { codeLabels } from "./framework";
 import { sessionMetrics, type SessionMetrics } from "./metrics";
 import {
@@ -31,7 +32,7 @@ const MSG_COLS = "id, session_id, role, content, phase, word_count, response_ms,
 // "*" so the pages keep working before and after the skills column is added.
 const ANN_COLS = "*";
 
-type ClassRow = { id: string; code: string; name: string | null; teacher_id: string | null; created_at: string };
+type ClassRow = { id: string; code: string; name: string | null; teacher_id: string | null; created_at: string; settings?: unknown };
 
 export async function listClasses(staff: StaffSession) {
   const db = supabaseAdmin();
@@ -70,7 +71,7 @@ export async function listClasses(staff: StaffSession) {
 async function loadClass(staff: StaffSession, classId: string) {
   const { data: cls } = await supabaseAdmin()
     .from("classes")
-    .select("id, code, name, teacher_id, created_at")
+    .select("*") // "*" so it still works before migration_003 adds "settings"
     .eq("id", classId)
     .maybeSingle();
   if (!cls) return { error: 404 as const };
@@ -168,6 +169,7 @@ export async function classDashboard(staff: StaffSession, classId: string) {
 
   return {
     class: { id: cls.id, code: cls.code, name: cls.name },
+    settings: normalizeSettings(cls.settings),
     tasks: [...tasks.values()],
     students: (students ?? []).map((s) => ({ id: s.id, nickname: s.nickname })),
     sessions: rows,
@@ -178,7 +180,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
   const db = supabaseAdmin();
   const { data: s } = await db
     .from("sessions")
-    .select("id, student_id, task_id, lang, gender, status, current_phase, started_at, ended_at")
+    .select("id, student_id, task_id, lang, gender, status, current_phase, started_at, ended_at, summary")
     .eq("id", sessionId)
     .maybeSingle();
   if (!s) return { error: 404 as const };
@@ -220,6 +222,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
       currentPhase: s.current_phase,
       startedAt: s.started_at,
       endedAt: s.ended_at,
+      summary: (s.summary as string | null) ?? null,
     },
     phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
     challengeLabels: codeLabels(),

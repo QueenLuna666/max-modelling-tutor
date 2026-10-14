@@ -3,6 +3,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffShell";
+import { Modal } from "@/components/Modal";
+import { ClassQr } from "@/components/ClassQr";
+import { MiniMarkdown } from "@/components/MiniMarkdown";
+import { FEATURES, type ClassSettings, type FeatureKey } from "@/lib/classSettings";
 
 type Alert = { kind: string; text: string; severity: "warn" | "info" };
 type Row = {
@@ -24,6 +28,7 @@ type Row = {
 };
 type Dashboard = {
   class: { id: string; code: string; name: string | null };
+  settings: ClassSettings;
   tasks: { id: string; title: string; phases: { id: string; label: string }[] }[];
   students: { id: string; nickname: string }[];
   sessions: Row[];
@@ -41,18 +46,33 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("he-IL", { day
 
 export default function ClassPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, error } = useStaffData<Dashboard>(`/api/staff/classes/${id}`, 15000);
+  const { data, error, reload } = useStaffData<Dashboard>(`/api/staff/classes/${id}`, 15000);
   const title = data?.class.name ?? data?.class.code ?? "כיתה";
   return (
     <StaffShell crumbs={[{ label: title }]}>
       {(me) =>
-        error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">טוען…</p> : <ClassView d={data} researcher={isResearcherRole(me.role)} />
+        error ? <p className="text-warn">{error}</p> : !data ? <p className="text-muted">טוען…</p> : <ClassView d={data} researcher={isResearcherRole(me.role)} reload={reload} />
       }
     </StaffShell>
   );
 }
 
-function ClassView({ d, researcher }: { d: Dashboard; researcher: boolean }) {
+function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolean; reload: () => void }) {
+  const [showQr, setShowQr] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [summary, setSummary] = useState<{ loading: boolean; text: string; error: string } | null>(null);
+
+  async function makeSummary() {
+    setSummary({ loading: true, text: "", error: "" });
+    const r = await fetch(`/api/staff/classes/${d.class.id}/summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId: task?.id }),
+    });
+    const j = await r.json().catch(() => ({}));
+    setSummary({ loading: false, text: j.summary ?? "", error: r.ok ? "" : (j.error ?? "שגיאה") });
+  }
+
   const [taskId, setTaskId] = useState(d.tasks[0]?.id ?? "");
   const task = d.tasks.find((t) => t.id === taskId) ?? d.tasks[0];
   const rows = useMemo(() => d.sessions.filter((s) => !task || s.taskId === task.id), [d.sessions, task]);
@@ -74,6 +94,20 @@ function ClassView({ d, researcher }: { d: Dashboard; researcher: boolean }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setShowQr(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
+            📱 קוד וברקוד לכיתה
+          </button>
+          <button type="button" onClick={() => setShowSettings(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-paper">
+            ⚙️ הגדרות כיתה
+          </button>
+          <button
+            type="button"
+            onClick={makeSummary}
+            disabled={summary?.loading || !rows.length}
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-50"
+          >
+            ✨ מה כדאי לעשות בשיעור הבא?
+          </button>
           {d.tasks.length > 1 && (
             <select id="taskSelect" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm">
               {d.tasks.map((t) => (
@@ -95,6 +129,40 @@ function ClassView({ d, researcher }: { d: Dashboard; researcher: boolean }) {
           )}
         </div>
       </div>
+
+      {summary && (
+        <section className="rounded-2xl border border-accent/30 bg-accent-soft/50 p-5">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-semibold">✨ סיכום הכיתה מ-MAX</h2>
+            <button type="button" onClick={() => setSummary(null)} className="text-xs text-muted underline">
+              סגירה
+            </button>
+          </div>
+          {summary.loading ? (
+            <p className="animate-pulse text-sm text-muted">MAX קורא את העבודה של כל התלמידים… (כחצי דקה)</p>
+          ) : summary.error ? (
+            <p className="text-sm text-warn">{summary.error}</p>
+          ) : (
+            <MiniMarkdown text={summary.text} />
+          )}
+        </section>
+      )}
+
+      <Modal open={showQr} onClose={() => setShowQr(false)} title="כניסה לכיתה" closeLabel="סגירה">
+        <ClassQr code={d.class.code} />
+      </Modal>
+      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="הגדרות כיתה" closeLabel="סגירה">
+        {showSettings && (
+          <SettingsForm
+            classId={d.class.id}
+            initial={d.settings}
+            onSaved={() => {
+              setShowSettings(false);
+              reload();
+            }}
+          />
+        )}
+      </Modal>
 
       <dl className="tabular grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi label="תלמידים בכיתה" value={d.students.length} />
@@ -213,5 +281,97 @@ function LegendSwatch({ cls, text }: { cls: string; text: string }) {
       <span className={`inline-block size-3 rounded-sm ${cls}`} />
       {text}
     </span>
+  );
+}
+
+type StudioTask = { id: string; title: string; status: string };
+
+function SettingsForm({ classId, initial, onSaved }: { classId: string; initial: ClassSettings; onSaved: () => void }) {
+  const [settings, setSettings] = useState<ClassSettings>(initial);
+  const [msg, setMsg] = useState("");
+  const { data } = useStaffData<{ tasks: StudioTask[] }>("/api/studio");
+  const published = (data?.tasks ?? []).filter((t) => t.status === "published");
+  const allOpen = settings.tasks === null;
+
+  async function save() {
+    setMsg("");
+    const r = await fetch(`/api/staff/classes/${classId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) setMsg(j.error ?? "השמירה נכשלה");
+    else onSaved();
+  }
+
+  return (
+    <div className="space-y-6 text-sm">
+      <section>
+        <h3 className="mb-2 font-semibold">משימות פתוחות בכיתה</h3>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={allOpen} onChange={(e) => setSettings({ ...settings, tasks: e.target.checked ? null : published.map((t) => t.id) })} />
+          כל המשימות שפורסמו (כולל חדשות מהסטודיו)
+        </label>
+        {!allOpen && (
+          <ul className="mt-2 space-y-1 rounded-xl border border-line p-3">
+            {published.map((t) => (
+              <li key={t.id}>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.tasks!.includes(t.id)}
+                    onChange={(e) =>
+                      setSettings({ ...settings, tasks: e.target.checked ? [...settings.tasks!, t.id] : settings.tasks!.filter((x) => x !== t.id) })
+                    }
+                  />
+                  {t.title}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-2 font-semibold">כלי עזר לתלמידים</h3>
+        <ul className="space-y-2">
+          {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
+            <li key={k}>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={settings.features[k]}
+                  onChange={(e) => setSettings({ ...settings, features: { ...settings.features, [k]: e.target.checked } })}
+                />
+                <span>
+                  <span className="font-medium">{FEATURES[k].he}</span>
+                  <span className="block text-xs text-muted">{FEATURES[k].desc}</span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="mb-2 font-semibold">רמז הכי חזק ש-MAX רשאי לתת</h3>
+        <select
+          value={settings.maxHint}
+          onChange={(e) => setSettings({ ...settings, maxHint: e.target.value as ClassSettings["maxHint"] })}
+          className="rounded-lg border border-line bg-paper px-3 py-1.5"
+        >
+          <option value="strong">חזק (ברירת מחדל): נותן מבנה, אף פעם לא את התשובה</option>
+          <option value="medium">בינוני: מכוון לרעיון בלי לתת מבנה</option>
+          <option value="light">קל בלבד: רק שאלות מכוונות</option>
+        </select>
+      </section>
+
+      {msg && <p className="rounded-lg bg-warn-soft px-3 py-2 text-warn">{msg}</p>}
+      <button type="button" onClick={save} className="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-strong">
+        שמירה
+      </button>
+    </div>
   );
 }
