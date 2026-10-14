@@ -52,3 +52,18 @@ npm run dev
 ## פרטיות
 
 תלמידים נכנסים עם כינוי בלבד, בלי שם ובלי מייל. כל הגישה לנתונים עוברת בשרת עם המפתח הסודי. כל הטבלאות מוגנות ב-RLS בלי מדיניות פתוחה, כך שאי אפשר לקרוא נתונים מהדפדפן.
+
+## Extending MAX (modular by design)
+
+| What you want to add | Where | Code needed? |
+|---|---|---|
+| A new task | Staff → ✨ Task studio (photo or description → task agent → approve) | No |
+| Change a task (text, numbers, hints, picture) | Task studio → the task → chat with the agent, or manual / JSON edit | No |
+| Which tasks a class sees, which student tools are on, strongest hint allowed | Class page → ⚙️ Class settings | No |
+| How MAX talks, the analyzer's coding rules, the task agent, the summaries | `prompts/*.md` (plain text) | No (text only) |
+| The lab's framework: phases, skill and difficulty codes | `lib/framework.ts` | Small |
+| A new student tool (switchable per class) | Add it to `FEATURES` in `lib/classSettings.ts`, then read `features.<key>` in the student page | Yes |
+
+Agents: `lib/analyzer.ts` (codes each student message), `lib/policy.ts` (hint level), MAX tutor (`app/api/chat`),
+`lib/taskAuthor.ts` (writes tasks), `lib/summaries.ts` (teacher summaries).
+Database changes: `supabase/schema.sql`, then `migration_002_skills.sql`, `migration_003_studio.sql`.
