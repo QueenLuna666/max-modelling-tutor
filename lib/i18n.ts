@@ -54,6 +54,10 @@ const STRINGS = {
   send: { he: "שליחה", ar: "إرسال" },
   enterHint: { he: "Enter לשליחה · Shift+Enter לשורה חדשה", ar: "Enter للإرسال · Shift+Enter لسطر جديد" },
   thinking: { he: "MAX חושב…", ar: "MAX يفكّر…" },
+  // While the analyzer codes the message and MAX prepares its reply (a few seconds).
+  reading: { he: "MAX קורא את מה שכתבת…", ar: "MAX يقرأ ما كتبته…" },
+  pondering: { he: "MAX חושב איך לעזור לך להמשיך…", ar: "MAX يفكّر كيف يساعدك على المتابعة…" },
+  almost: { he: "עוד רגע…", ar: "لحظة واحدة…" },
   stepsTitle: { he: "שלבי המידול", ar: "مراحل النمذجة" },
   loading: { he: "טוען…", ar: "جارٍ التحميل…" },
   error: { he: "משהו השתבש. נסו שוב.", ar: "حدث خطأ. حاولوا مرة أخرى." },

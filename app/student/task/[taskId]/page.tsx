@@ -259,7 +259,11 @@ export default function TaskWork() {
           />
         ))}
         {draft !== null && (
-          <Bubble msg={{ role: "tutor", content: draft || tr("thinking", lang) }} youLabel="" pending={!draft} />
+          draft ? (
+            <Bubble msg={{ role: "tutor", content: draft }} youLabel="" />
+          ) : (
+            <WaitingBubble lang={lang} />
+          )
         )}
         {status === "done" && (
           <div className="flex flex-col items-center rounded-3xl border-2 border-ok bg-mint-soft p-5 text-center text-ok">
@@ -357,6 +361,33 @@ export default function TaskWork() {
         </div>
       </Modal>
     </main>
+    </div>
+  );
+}
+
+// Shown while the analyzer reads the message and MAX prepares its reply.
+function WaitingBubble({ lang }: { lang: "he" | "ar" }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const a = setTimeout(() => setStage(1), 2500);
+    const b = setTimeout(() => setStage(2), 7000);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, []);
+  const text = tr(stage === 0 ? "reading" : stage === 1 ? "pondering" : "almost", lang);
+  return (
+    <div className="flex flex-row-reverse items-end justify-start gap-2" role="status" aria-live="polite">
+      <MaxMascot size={34} className="mb-1 shrink-0" />
+      <div className="flex items-center gap-2 rounded-3xl rounded-se-md border-2 border-accent/25 bg-surface px-4 py-2.5 text-muted">
+        <span aria-hidden className="flex gap-1">
+          <span className="size-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
+          <span className="size-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
+          <span className="size-1.5 animate-bounce rounded-full bg-accent" />
+        </span>
+        {text}
+      </div>
     </div>
   );
 }
