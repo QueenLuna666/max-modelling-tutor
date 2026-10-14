@@ -10,6 +10,7 @@ import { SpeakButton, useDictation, useSpeech, useTextPrefs } from "@/components
 import { MaxMascot } from "@/components/MaxMascot";
 import { BackButton } from "@/components/BackButton";
 import { MessageText } from "@/components/MessageText";
+import "./workspace.css";
 
 type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean; pictures?: boolean };
 
@@ -166,19 +167,19 @@ export default function TaskWork() {
 
   return (
     <div className="graph-paper">
-    <main lang={lang} className="mx-auto flex h-dvh max-w-3xl flex-col px-4">
+    <main lang={lang} className={`max-chat-shell ${text.scale > 1.2 ? "max-chat-expanded" : ""} mx-auto flex min-w-0 max-w-5xl flex-col bg-paper/95 px-4 sm:border-x sm:border-line sm:px-8`}>
       {/* header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
-        <div className="min-w-0">
-          <BackButton fallback="/student/tasks" label={tr("backToTasks", lang)} className="mb-1.5 py-1 text-xs" />
-          <h1 className="truncate text-xl">{task?.title ?? tr("loading", lang)}</h1>
+      <header className="flex shrink-0 flex-col gap-3 border-b border-line py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:py-4">
+        <div className="min-w-0 space-y-2">
+          <BackButton fallback="/student/tasks" label={tr("backToTasks", lang)} className="min-h-11 text-sm" />
+          <h1 className="text-xl leading-snug [overflow-wrap:anywhere] sm:text-2xl">{task?.title ?? tr("loading", lang)}</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setShowTask(true)}
             disabled={!task}
-            className="rounded-full border-2 border-accent bg-surface px-3 py-1.5 font-display text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
+            className="min-h-11 rounded-full border-2 border-accent bg-surface px-4 py-2 font-display text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
           >
             {tr("showTask", lang)}
           </button>
@@ -187,7 +188,7 @@ export default function TaskWork() {
               type="button"
               onClick={() => setConfirmFinish(true)}
               disabled={!sessionId}
-              className="rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:border-ok hover:text-ok disabled:opacity-50"
+              className="min-h-11 rounded-full border border-line bg-surface px-4 py-2 text-sm text-muted hover:border-ok hover:text-ok disabled:opacity-50"
             >
               {tr("finish", lang)}
             </button>
@@ -199,7 +200,7 @@ export default function TaskWork() {
 
       {/* helper tools (each one switchable per class by the teacher) */}
       {features && (features.readAloud || features.bigText) && (
-        <div role="toolbar" aria-label={tr("tools", lang)} className="flex flex-wrap items-center gap-1.5 border-b border-line py-2 text-sm">
+        <div role="toolbar" aria-label={tr("tools", lang)} className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line py-2 text-sm">
           {features.readAloud && task && (
             <>
               <SpeakButton
@@ -212,7 +213,7 @@ export default function TaskWork() {
                 label={tr("readTask", lang)}
                 stopLabel={tr("stopReading", lang)}
               />
-              <label className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-muted hover:bg-surface">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-muted hover:bg-surface">
                 <input type="checkbox" checked={autoRead} onChange={(e) => setAutoRead(e.target.checked)} className="accent-[var(--color-accent)]" />
                 {tr("autoRead", lang)}
               </label>
@@ -221,10 +222,10 @@ export default function TaskWork() {
           )}
           {features.bigText && (
             <span className="ms-auto flex items-center gap-1">
-              <button type="button" onClick={text.smaller} aria-label={tr("smaller", lang)} title={tr("smaller", lang)} className="rounded-full px-2 py-0.5 hover:bg-surface">
+              <button type="button" onClick={text.smaller} aria-label={tr("smaller", lang)} title={tr("smaller", lang)} className="min-h-11 min-w-11 rounded-full px-2 py-2 hover:bg-surface">
                 A−
               </button>
-              <button type="button" onClick={text.bigger} aria-label={tr("bigger", lang)} title={tr("bigger", lang)} className="rounded-full px-2 py-0.5 text-base font-semibold hover:bg-surface">
+              <button type="button" onClick={text.bigger} aria-label={tr("bigger", lang)} title={tr("bigger", lang)} className="min-h-11 min-w-11 rounded-full px-2 py-2 text-base font-semibold hover:bg-surface">
                 A+
               </button>
               <button
@@ -232,7 +233,8 @@ export default function TaskWork() {
                 onClick={text.toggleReadable}
                 aria-pressed={text.readable}
                 title={tr("readable", lang)}
-                className={`rounded-full px-2 py-0.5 ${text.readable ? "bg-accent text-white" : "hover:bg-surface"}`}
+                aria-label={tr("readable", lang)}
+                className={`min-h-11 min-w-11 rounded-full px-2 py-2 ${text.readable ? "bg-accent text-white" : "hover:bg-surface"}`}
               >
                 Aa
               </button>
@@ -242,9 +244,9 @@ export default function TaskWork() {
       )}
 
       {/* conversation */}
-      <section aria-live="polite" className="flex-1 space-y-3 overflow-y-auto py-4">
+      <section aria-live="polite" className="max-chat-conversation space-y-5 py-5 sm:py-6">
         {task && (
-          <article className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-[0_4px_0_var(--color-ink)]">
+          <article className="mx-auto max-w-3xl rounded-3xl border-2 border-ink bg-surface p-5 shadow-[0_4px_0_var(--color-ink)] sm:p-6">
             <TaskCard card={task.card} statement={task.statement} />
           </article>
         )}
@@ -306,7 +308,7 @@ export default function TaskWork() {
             e.preventDefault();
             send();
           }}
-          className="border-t border-line py-3"
+          className="shrink-0 border-t border-line py-3 sm:py-4"
         >
           {error && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{error}</p>}
           {messages.length > 0 && (features?.simpler || features?.pictures) && (
@@ -316,7 +318,7 @@ export default function TaskWork() {
                   type="button"
                   disabled={sending || !sessionId}
                   onClick={() => send(tr("simplerMsg", lang))}
-                  className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                  className="min-h-11 rounded-full border border-line bg-surface px-4 py-2 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
                 >
                   {tr("simpler", lang)}
                 </button>
@@ -326,7 +328,7 @@ export default function TaskWork() {
                   type="button"
                   disabled={sending || !sessionId}
                   onClick={() => send(tr("pictureMsg", lang))}
-                  className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                  className="min-h-11 rounded-full border border-line bg-surface px-4 py-2 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
                 >
                   {tr("picture", lang)}
                 </button>
@@ -335,7 +337,7 @@ export default function TaskWork() {
           )}
           {dictation.listening && <p className="mb-1 text-sm font-medium text-accent">🎙️ {tr("listening", lang)}</p>}
           {micNote && <p className="mb-1 text-xs text-warn">{micNote}</p>}
-          <div className="flex items-end gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:flex">
             <textarea
               id="message"
               value={input}
@@ -349,8 +351,9 @@ export default function TaskWork() {
               rows={2}
               maxLength={4000}
               placeholder={tr("placeholder", lang, gender)}
+              aria-label={tr("placeholder", lang, gender)}
               disabled={!sessionId}
-              className="min-h-[3rem] flex-1 resize-none rounded-2xl border-2 border-line bg-surface px-3 py-2.5 leading-relaxed focus:border-accent"
+              className="col-span-2 min-h-20 min-w-0 w-full flex-1 resize-y rounded-2xl border-2 border-line bg-surface px-4 py-3 leading-relaxed focus:border-accent sm:resize-none"
             />
             {features?.voiceInput && (
               <button
@@ -364,7 +367,7 @@ export default function TaskWork() {
                 aria-pressed={dictation.listening}
                 aria-label={tr("speak", lang)}
                 title={tr("speak", lang)}
-                className={`rounded-xl border px-3 py-3 text-lg ${dictation.listening ? "animate-pulse border-accent bg-accent text-white" : "border-line bg-surface hover:bg-accent-soft"}`}
+                className={`min-h-12 shrink-0 justify-self-start rounded-xl border px-4 py-3 text-lg ${dictation.listening ? "animate-pulse border-accent bg-accent text-white" : "border-line bg-surface hover:bg-accent-soft"}`}
               >
                 🎤
               </button>
@@ -372,12 +375,12 @@ export default function TaskWork() {
             <button
               type="submit"
               disabled={!input.trim() || sending || !sessionId}
-              className="btn-chunky rounded-2xl bg-accent px-5 py-3 text-white hover:bg-accent-strong disabled:opacity-40"
+              className="btn-chunky col-start-2 min-h-12 shrink-0 justify-self-end rounded-2xl bg-accent px-6 py-3 text-white hover:bg-accent-strong disabled:opacity-40"
             >
               {tr("send", lang)}
             </button>
           </div>
-          <p className="mt-1.5 text-xs text-muted">{tr("enterHint", lang)}</p>
+          <p className="mt-2 text-sm text-muted">{tr("enterHint", lang)}</p>
         </form>
       )}
 
@@ -418,9 +421,9 @@ function WaitingBubble({ lang }: { lang: "he" | "ar" }) {
       <MaxMascot size={34} className="mb-1 shrink-0" />
       <div className="flex items-center gap-2 rounded-3xl rounded-se-md border-2 border-accent/25 bg-surface px-4 py-2.5 text-muted">
         <span aria-hidden className="flex gap-1">
-          <span className="size-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
-          <span className="size-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
-          <span className="size-1.5 animate-bounce rounded-full bg-accent" />
+          <span className="size-1.5 animate-pulse rounded-full bg-accent [animation-delay:-0.3s]" />
+          <span className="size-1.5 animate-pulse rounded-full bg-accent [animation-delay:-0.15s]" />
+          <span className="size-1.5 animate-pulse rounded-full bg-accent" />
         </span>
         {text}
       </div>
@@ -436,11 +439,11 @@ function Bubble({ msg, youLabel, pending, speak, drawingLabel }: { msg: Msg; you
     <div className={`flex items-end gap-2 ${mine ? "justify-start" : "flex-row-reverse justify-start"}`}>
       {!mine && <MaxMascot size={34} className="mb-1 shrink-0" />}
       <div
-        className={`max-w-[85%] rounded-3xl px-4 py-2.5 leading-relaxed ${
+        className={`min-w-0 max-w-[85%] rounded-3xl px-4 py-3 leading-relaxed [overflow-wrap:anywhere] sm:max-w-prose sm:px-5 ${
           mine ? "rounded-ss-md bg-accent text-white" : "rounded-se-md border-2 border-accent/25 bg-surface text-ink"
         } ${pending ? "animate-pulse text-muted" : ""}`}
       >
-        <span className={`mb-0.5 flex items-center justify-between gap-2 text-[11px] font-semibold ${mine ? "text-white/75" : "text-accent"}`}>
+        <span className={`mb-1 flex items-center justify-between gap-3 text-sm font-semibold ${mine ? "text-white" : "text-accent"}`}>
           {mine ? youLabel : "MAX"}
           {speak && <SpeakButton small active={speak.active} onClick={speak.toggle} label={speak.label} stopLabel={speak.stopLabel} />}
         </span>

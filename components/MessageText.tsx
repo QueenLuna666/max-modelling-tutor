@@ -28,11 +28,11 @@ function Lines({ text }: { text: string }) {
     <>
       {text.split("\n").map((line, i) =>
         isFormulaLine(line) ? (
-          <span key={i} dir="ltr" className="my-1 block rounded-lg bg-paper/70 px-2 py-1 text-center font-mono text-[0.95em] text-ink [unicode-bidi:isolate]">
+          <span key={i} dir="ltr" className="my-1 block max-w-full overflow-x-auto rounded-lg bg-paper/70 px-2 py-1 text-center font-mono text-[0.95em] whitespace-nowrap text-ink [overflow-wrap:normal] [unicode-bidi:isolate]">
             {line.trim()}
           </span>
         ) : (
-          <span key={i} className="block min-h-[1em]">
+          <span key={i} className="block min-h-[1em] [overflow-wrap:anywhere]">
             {line}
           </span>
         ),

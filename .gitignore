@@ -41,3 +41,29 @@ yarn-error.log*
 next-env.d.ts
 
 !.env.example
+
+# impeccable-ignore-start
+# Runtime output and per-developer state; shared configuration stays tracked.
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/*.jpg
+**/.impeccable/review/
+**/.impeccable/questions/
+**/.impeccable/live/server.json
+**/.impeccable/live/sessions/
+**/.impeccable/live/previews/
+**/.impeccable/live/annotations/
+**/.impeccable/live/cache/
+**/.impeccable/live/manual-edit-apply-transaction.json
+**/.impeccable/live/manual-edit-events.jsonl
+**/.impeccable/live/manual-edit-evidence/
+**/.impeccable/live/pending-manual-edits.json
+**/.impeccable/live/deferred-svelte-component-accepts.json
+**/.impeccable/live/*.png
+# impeccable-ignore-end
+
+# Downloaded platform-specific engines (the launcher can fetch them again).
+/.impeccable/bin/
+/.agents/skills/impeccable/scripts/bin/

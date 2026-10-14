@@ -34,17 +34,17 @@ export function Modal({
       className="m-auto w-[min(92vw,640px)] max-h-[85vh] rounded-2xl bg-surface p-0 text-ink shadow-2xl"
     >
       <div className="flex max-h-[85vh] flex-col">
-        <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-5 py-4">
+          <h2 className="min-w-0 text-lg font-semibold [overflow-wrap:anywhere]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-paper"
+            className="min-h-11 shrink-0 rounded-lg border border-line px-3 py-2 text-sm hover:bg-paper"
           >
             {closeLabel}
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 overflow-y-auto px-5 py-4">{children}</div>
       </div>
     </dialog>
   );

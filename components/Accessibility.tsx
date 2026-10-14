@@ -163,7 +163,7 @@ export function SpeakButton({ active, onClick, label, stopLabel, small }: { acti
       onClick={onClick}
       aria-label={active ? stopLabel : label}
       title={active ? stopLabel : label}
-      className={`inline-flex items-center gap-1 rounded-full ${small ? "px-1.5 py-0.5 text-xs" : "px-2.5 py-1 text-sm"} ${
+      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-full ${small ? "px-2 py-2 text-sm" : "px-3 py-2 text-sm"} ${
         active ? "bg-accent text-white" : "text-accent hover:bg-accent-soft"
       }`}
     >

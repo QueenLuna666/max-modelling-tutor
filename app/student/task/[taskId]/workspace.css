@@ -1,0 +1,39 @@
+.max-chat-shell {
+  height: 100dvh;
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.max-chat-conversation {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--color-line) var(--color-paper);
+}
+
+/* Reading-size preferences must not squeeze the conversation out of view. */
+.max-chat-shell.max-chat-expanded {
+  height: auto;
+  min-height: 100dvh;
+}
+
+.max-chat-expanded .max-chat-conversation {
+  flex: none;
+  min-height: 16rem;
+  max-height: 60dvh;
+}
+
+/* Short windows and enlarged text need a page-scroll fallback. */
+@media (max-height: 600px) {
+  .max-chat-shell {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .max-chat-conversation {
+    flex: none;
+    min-height: 16rem;
+    max-height: 60dvh;
+  }
+}
