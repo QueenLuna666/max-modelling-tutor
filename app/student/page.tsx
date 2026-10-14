@@ -2,6 +2,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { STUDENT_KEY, tr, type UiGender, type UiLang } from "@/lib/i18n";
+import { MaxMascot } from "@/components/MaxMascot";
 
 export default function StudentLoginPage() {
   return (
@@ -41,17 +42,21 @@ function StudentLogin() {
 
   const g = gender ?? "male";
   return (
+    <div className="graph-paper min-h-screen">
     <main lang={lang} className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tr("studentLogin", lang)}</h1>
-        <div role="group" aria-label={tr("language", lang)} className="flex rounded-lg border border-line bg-surface p-0.5 text-sm">
+      <div className="mb-5 flex items-end justify-between gap-3">
+        <div className="flex items-end gap-3">
+          <MaxMascot size={64} wave />
+          <h1 className="text-3xl">{tr("studentLogin", lang)}</h1>
+        </div>
+        <div role="group" aria-label={tr("language", lang)} className="flex rounded-full border border-line bg-surface p-0.5 text-sm">
           {(["he", "ar"] as const).map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLang(l)}
               aria-pressed={lang === l}
-              className={`rounded-md px-3 py-1 ${lang === l ? "bg-accent text-white" : "text-muted"}`}
+              className={`rounded-full px-3 py-1 ${lang === l ? "bg-accent text-white" : "text-muted"}`}
             >
               {l === "he" ? "עברית" : "العربية"}
             </button>
@@ -59,7 +64,7 @@ function StudentLogin() {
         </div>
       </div>
 
-      <form onSubmit={submit} className="space-y-5 rounded-2xl border border-line bg-surface p-6">
+      <form onSubmit={submit} className="space-y-5 rounded-3xl border-2 border-ink bg-surface p-6 shadow-[0_6px_0_var(--color-ink)]">
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">{tr("classCode", lang)}</span>
           <input
@@ -69,7 +74,7 @@ function StudentLogin() {
             dir="ltr"
             autoCapitalize="characters"
             autoComplete="off"
-            className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-lg tracking-widest uppercase"
+            className="w-full rounded-xl border-2 border-line bg-sun-soft px-3 py-2.5 font-display text-2xl tracking-[0.2em] uppercase focus:border-accent"
             placeholder="DEMO1"
           />
           <span className="block text-xs text-muted">{tr("classCodeHint", lang)}</span>
@@ -83,7 +88,7 @@ function StudentLogin() {
             onChange={(e) => setNickname(e.target.value)}
             maxLength={30}
             autoComplete="off"
-            className="w-full rounded-lg border border-line bg-paper px-3 py-2.5"
+            className="w-full rounded-xl border-2 border-line bg-paper px-3 py-2.5 text-lg focus:border-accent"
           />
           <span className="block text-xs text-muted">{tr("nicknameHint", lang)}</span>
         </label>
@@ -94,8 +99,8 @@ function StudentLogin() {
             {(["male", "female"] as const).map((v) => (
               <label
                 key={v}
-                className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 ${
-                  gender === v ? "border-accent bg-accent-soft font-medium text-accent-strong" : "border-line"
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-3 py-2.5 font-display text-lg ${
+                  gender === v ? "border-accent bg-accent text-white" : "border-line bg-paper hover:border-accent/50"
                 }`}
               >
                 <input
@@ -115,10 +120,11 @@ function StudentLogin() {
 
         {error && <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{error}</p>}
 
-        <button type="submit" className="w-full rounded-lg bg-accent px-4 py-3 font-semibold text-white hover:bg-accent-strong">
+        <button type="submit" className="btn-chunky w-full rounded-2xl bg-accent px-4 py-3.5 text-lg text-white hover:bg-accent-strong">
           {tr("enter", lang, g)}
         </button>
       </form>
     </main>
+    </div>
   );
 }

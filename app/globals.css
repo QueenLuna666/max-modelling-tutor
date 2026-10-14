@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
-/* MAX visual system: calm classroom paper, one deep-teal accent, ordinal phase scale. */
+/* MAX visual system: a squared maths notebook, MAX's violet ink, and the lab's task-card yellow,
+   with coral / mint / sky as friendly accents for students. */
 @theme {
   --font-sans: "Rubik", "Noto Sans Hebrew", "Noto Sans Arabic", system-ui, sans-serif;
+  --font-display: "Fredoka", "Baloo Bhaijaan 2", "Rubik", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --color-paper: #f5f6f2;
+  --color-paper: #f6f8fe;
+  --color-grid: #e2e8f7;
   --color-surface: #ffffff;
-  --color-ink: #1a2330;
-  --color-muted: #5d6875;
-  --color-line: #dde2da;
-  --color-accent: #0f625c;
-  --color-accent-strong: #0a4a45;
-  --color-accent-soft: #e1eeeb;
-  --color-max: #eef1f6;
-  --color-warn: #a85a07;
-  --color-warn-soft: #fcefdf;
-  --color-info: #2a5ea8;
-  --color-info-soft: #e6eefa;
-  --color-ok: #2d7a4a;
-  --color-ok-soft: #e3f2e8;
-  --color-sun: #fbd25c; /* the yellow of the lab's task cards */
+  --color-ink: #1f2347;
+  --color-muted: #5b6283;
+  --color-line: #dde2f2;
+  --color-accent: #5a47d6;
+  --color-accent-strong: #4332b5;
+  --color-accent-soft: #ecE9ff;
+  --color-max: #f1efff;
+  --color-warn: #b4501f;
+  --color-warn-soft: #ffeee6;
+  --color-info: #1f6fb8;
+  --color-info-soft: #e5f2fd;
+  --color-ok: #137a64;
+  --color-ok-soft: #dff6f0;
+  --color-sun: #ffc93c; /* the yellow of the lab's task cards */
+  --color-sun-soft: #fff4d1;
+  --color-coral: #ff6f59;
+  --color-coral-soft: #ffe7e2;
+  --color-mint: #1fb59a;
+  --color-mint-soft: #ddf6f0;
+  --color-sky: #3fa9f5;
+  --color-sky-soft: #e2f2fe;
 
   /* Seven modelling phases, light → deep (ordinal). */
   --color-ph1: #9fd3c7;
@@ -48,6 +58,40 @@ h1,
 h2,
 h3 {
   text-wrap: balance;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+/* Student screens sit on squared notebook paper. */
+.graph-paper {
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Chunky, pressable buttons for students. */
+.btn-chunky {
+  font-family: var(--font-display);
+  font-weight: 600;
+  box-shadow: 0 4px 0 var(--color-accent-strong);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.btn-chunky:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--color-accent-strong);
+}
+
+@keyframes max-wave {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-12deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-6deg); }
+}
+.max-wave {
+  transform-origin: 50% 90%;
+  animation: max-wave 1.4s ease-in-out 0.3s 1;
 }
 
 :focus-visible {

@@ -7,6 +7,7 @@ import { sendMessage, startSession, type StartResult } from "@/lib/chatClient";
 import { Modal } from "@/components/Modal";
 import { TaskCard } from "@/components/TaskCard";
 import { SpeakButton, useDictation, useSpeech, useTextPrefs } from "@/components/Accessibility";
+import { MaxMascot } from "@/components/MaxMascot";
 
 type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean };
 
@@ -155,6 +156,7 @@ export default function TaskWork() {
   }
 
   return (
+    <div className="graph-paper">
     <main lang={lang} className="mx-auto flex h-dvh max-w-3xl flex-col px-4">
       {/* header */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
@@ -162,14 +164,14 @@ export default function TaskWork() {
           <Link href="/student/tasks" className="text-xs text-muted hover:underline">
             ← {tr("backToTasks", lang)}
           </Link>
-          <h1 className="truncate text-lg font-semibold">{task?.title ?? tr("loading", lang)}</h1>
+          <h1 className="truncate text-xl">{task?.title ?? tr("loading", lang)}</h1>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setShowTask(true)}
             disabled={!task}
-            className="rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft disabled:opacity-50"
+            className="rounded-full border-2 border-accent bg-surface px-3 py-1.5 font-display text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
           >
             {tr("showTask", lang)}
           </button>
@@ -178,7 +180,7 @@ export default function TaskWork() {
               type="button"
               onClick={() => setConfirmFinish(true)}
               disabled={!sessionId}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:bg-surface disabled:opacity-50"
+              className="rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:border-ok hover:text-ok disabled:opacity-50"
             >
               {tr("finish", lang)}
             </button>
@@ -235,7 +237,7 @@ export default function TaskWork() {
       {/* conversation */}
       <section aria-live="polite" className="flex-1 space-y-3 overflow-y-auto py-4">
         {task && (
-          <article className="rounded-2xl border border-line bg-surface p-4">
+          <article className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-[0_4px_0_var(--color-ink)]">
             <TaskCard card={task.card} statement={task.statement} />
           </article>
         )}
@@ -260,7 +262,8 @@ export default function TaskWork() {
           <Bubble msg={{ role: "tutor", content: draft || tr("thinking", lang) }} youLabel="" pending={!draft} />
         )}
         {status === "done" && (
-          <div className="rounded-2xl bg-ok-soft p-4 text-center text-ok">
+          <div className="flex flex-col items-center rounded-3xl border-2 border-ok bg-mint-soft p-5 text-center text-ok">
+            <MaxMascot size={56} wave />
             <p className="font-medium">{tr("finished", lang, gender)}</p>
             <Link href="/student/tasks" className="mt-2 inline-block underline">
               {tr("backToTasks", lang)}
@@ -307,7 +310,7 @@ export default function TaskWork() {
               maxLength={4000}
               placeholder={tr("placeholder", lang, gender)}
               disabled={!sessionId}
-              className="min-h-[3rem] flex-1 resize-none rounded-xl border border-line bg-surface px-3 py-2.5 leading-relaxed"
+              className="min-h-[3rem] flex-1 resize-none rounded-2xl border-2 border-line bg-surface px-3 py-2.5 leading-relaxed focus:border-accent"
             />
             {features?.voiceInput && (
               <button
@@ -329,7 +332,7 @@ export default function TaskWork() {
             <button
               type="submit"
               disabled={!input.trim() || sending || !sessionId}
-              className="rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-strong disabled:opacity-40"
+              className="btn-chunky rounded-2xl bg-accent px-5 py-3 text-white hover:bg-accent-strong disabled:opacity-40"
             >
               {tr("send", lang)}
             </button>
@@ -354,6 +357,7 @@ export default function TaskWork() {
         </div>
       </Modal>
     </main>
+    </div>
   );
 }
 
@@ -362,10 +366,11 @@ type SpeakCtl = { active: boolean; toggle: () => void; label: string; stopLabel:
 function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string; pending?: boolean; speak?: SpeakCtl }) {
   const mine = msg.role === "student";
   return (
-    <div className={`flex ${mine ? "justify-start" : "justify-end"}`}>
+    <div className={`flex items-end gap-2 ${mine ? "justify-start" : "flex-row-reverse justify-start"}`}>
+      {!mine && <MaxMascot size={34} className="mb-1 shrink-0" />}
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 leading-relaxed whitespace-pre-wrap ${
-          mine ? "rounded-ss-sm bg-accent text-white" : "rounded-se-sm bg-max text-ink"
+        className={`max-w-[85%] rounded-3xl px-4 py-2.5 leading-relaxed whitespace-pre-wrap ${
+          mine ? "rounded-ss-md bg-accent text-white" : "rounded-se-md border-2 border-accent/25 bg-surface text-ink"
         } ${pending ? "animate-pulse text-muted" : ""}`}
       >
         <span className={`mb-0.5 flex items-center justify-between gap-2 text-[11px] font-semibold ${mine ? "text-white/75" : "text-accent"}`}>
