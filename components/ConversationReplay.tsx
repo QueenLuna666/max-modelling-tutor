@@ -262,12 +262,15 @@ export function ConversationReplay({
                 </div>
                 {researcher && a && (
                   <>
-                    {(a.phases?.length ?? 0) > 1 && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted">{L("שלבים נוספים", "مراحل إضافية")}</dt>
-                        <dd className="text-end">{a.phases!.slice(1).map((x) => phaseLabel(x.phase)).join(", ")}</dd>
-                      </div>
-                    )}
+                    {(() => {
+                      const more = [...new Set((a.phases ?? []).map((x) => x.phase).filter((p) => p && p !== state.lastStudent!.phase))];
+                      return more.length > 0 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-muted">{L("שלבים נוספים", "مراحل إضافية")}</dt>
+                          <dd className="text-end">{more.map((p) => phaseLabel(p)).join(", ")}</dd>
+                        </div>
+                      ) : null;
+                    })()}
                     {level && (
                       <div className="flex justify-between gap-2">
                         <dt className="text-muted">{L("רמה", "المستوى")}</dt>
