@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { readStudent, STUDENT_KEY, tr, useStudent } from "@/lib/i18n";
 import { MaxMascot } from "@/components/MaxMascot";
+import { BackButton } from "@/components/BackButton";
 
 type TaskCard = { id: string; title: string; statement: string; card: { image: string | null; question?: string } | null };
 
@@ -37,7 +38,8 @@ export default function TaskLibrary() {
 
   return (
     <div className="graph-paper min-h-screen">
-    <main lang={lang} className="mx-auto max-w-3xl px-4 py-8">
+    <main lang={lang} className="mx-auto max-w-3xl px-4 py-6">
+      <BackButton fallback="/student" label={tr("back", lang)} className="mb-5" />
       <header className="mb-8 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <MaxMascot size={56} />
@@ -83,7 +85,6 @@ export default function TaskLibrary() {
                   <div className={`h-2 ${tint.band}`} />
                   <div className="flex flex-1 flex-col p-5">
                     <h2 className="text-xl">{t.title}</h2>
-                    <p className="mt-2 line-clamp-3 text-sm text-muted">{t.statement}</p>
                     <span className="mt-4 self-start rounded-full bg-accent px-4 py-1.5 font-display text-sm font-semibold text-white group-hover:bg-accent-strong">
                       {tr("start", lang)}
                     </span>

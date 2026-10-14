@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BackButton } from "./BackButton";
 
 export type Me = { id: string; name: string; email: string; role: "teacher" | "researcher" | "admin" };
 const ROLE_LABEL: Record<Me["role"], string> = { teacher: "מורה", researcher: "חוקר/ת", admin: "מנהל/ת" };
@@ -67,6 +68,7 @@ export function StaffShell({
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <BackButton fallback="/staff" className="me-1 py-1" />
             <Link href="/staff" className="font-bold text-accent">
               MAX
             </Link>

@@ -1,6 +1,7 @@
 "use client";
 // Opening staff accounts (teachers / researchers). Protected by ADMIN_SECRET from the Vercel settings.
 import { useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import Link from "next/link";
 
 type Staff = { id: string; email: string; name: string; role: string; created_at: string };
@@ -42,6 +43,7 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-10">
+      <BackButton fallback="/" />
       <div>
         <Link href="/" className="text-sm text-muted hover:underline">
           ← MAX

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +28,7 @@ export default function StaffLogin() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-10">
+      <BackButton fallback="/" className="mb-6 self-start" />
       <Link href="/" className="mb-6 text-sm text-muted hover:underline">
         ← MAX
       </Link>

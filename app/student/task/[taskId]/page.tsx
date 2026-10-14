@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { TaskCard } from "@/components/TaskCard";
 import { SpeakButton, useDictation, useSpeech, useTextPrefs } from "@/components/Accessibility";
 import { MaxMascot } from "@/components/MaxMascot";
+import { BackButton } from "@/components/BackButton";
 
 type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean };
 
@@ -161,9 +162,7 @@ export default function TaskWork() {
       {/* header */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
         <div className="min-w-0">
-          <Link href="/student/tasks" className="text-xs text-muted hover:underline">
-            ← {tr("backToTasks", lang)}
-          </Link>
+          <BackButton fallback="/student/tasks" label={tr("backToTasks", lang)} className="mb-1.5 py-1 text-xs" />
           <h1 className="truncate text-xl">{task?.title ?? tr("loading", lang)}</h1>
         </div>
         <div className="flex gap-2">

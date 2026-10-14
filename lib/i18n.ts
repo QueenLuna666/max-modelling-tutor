@@ -76,6 +76,7 @@ const STRINGS = {
   noVoice: { he: "בדפדפן הזה אין קול בעברית. נסו בכרום או בטלפון.", ar: "لا يوجد صوت عربي في هذا المتصفح. جرّبوا Chrome أو الهاتف." },
   noMic: { he: "הדפדפן הזה לא תומך בהקלטת דיבור. נסו בכרום.", ar: "هذا المتصفح لا يدعم التعرّف على الكلام. جرّبوا Chrome." },
   tools: { he: "כלי עזר", ar: "أدوات مساعدة" },
+  back: { he: "חזרה", ar: "رجوع" },
 } satisfies Record<string, Record<UiLang, Text>>;
 
 export type StringKey = keyof typeof STRINGS;
@@ -83,6 +84,23 @@ export type StringKey = keyof typeof STRINGS;
 export function tr(key: StringKey, lang: UiLang, gender: UiGender = "male"): string {
   const v: Text = STRINGS[key][lang];
   return typeof v === "string" ? v : v[gender];
+}
+
+// The interface language chosen on the home page (remembered on this device).
+export const LANG_KEY = "max_lang";
+
+export function readUiLang(): UiLang {
+  try {
+    return localStorage.getItem(LANG_KEY) === "ar" ? "ar" : "he";
+  } catch {
+    return "he";
+  }
+}
+
+export function saveUiLang(lang: UiLang) {
+  try {
+    localStorage.setItem(LANG_KEY, lang);
+  } catch {}
 }
 
 // Saved in sessionStorage after login, read by the student pages.

@@ -1,7 +1,8 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { STUDENT_KEY, tr, type UiGender, type UiLang } from "@/lib/i18n";
+import { readUiLang, saveUiLang, STUDENT_KEY, tr, type UiGender, type UiLang } from "@/lib/i18n";
+import { BackButton } from "@/components/BackButton";
 import { MaxMascot } from "@/components/MaxMascot";
 
 export default function StudentLoginPage() {
@@ -16,7 +17,16 @@ export default function StudentLoginPage() {
 function StudentLogin() {
   const router = useRouter();
   const params = useSearchParams();
-  const [lang, setLang] = useState<UiLang>("he");
+  const [lang, setLangState] = useState<UiLang>("he");
+  useEffect(() => {
+    // The language chosen on the home page.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLangState(readUiLang());
+  }, []);
+  const setLang = (l: UiLang) => {
+    setLangState(l);
+    saveUiLang(l);
+  };
   const [classCode, setClassCode] = useState(params.get("code") ?? "");
   const [nickname, setNickname] = useState("");
   const [gender, setGender] = useState<UiGender | null>(null);
@@ -44,6 +54,7 @@ function StudentLogin() {
   return (
     <div className="graph-paper min-h-screen">
     <main lang={lang} className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
+      <BackButton fallback="/" label={tr("back", lang)} className="mb-6 self-start" />
       <div className="mb-5 flex items-end justify-between gap-3">
         <div className="flex items-end gap-3">
           <MaxMascot size={64} wave />
