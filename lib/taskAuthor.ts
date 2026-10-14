@@ -179,26 +179,38 @@ export async function runTaskAuthor(opts: {
   if (opts.noteLang === "ar") text += `\nWrite note_to_author in Arabic (the researcher is using the Arabic interface).`;
   parts.push({ type: "text", text });
 
-  const res = llm().messages.stream({
-    model: await model("tutor"),
-    max_tokens: 16000,
-    system: await loadPrompt("task_author"),
-    tools: [TOOL],
-    tool_choice: { type: "tool", name: "record_task" },
-    messages: [{ role: "user", content: parts }],
-  });
+  // The tutor model on this account does not accept a forced tool_choice, so we ask for the tool
+  // explicitly and let the model choose it ("auto"); one retry if it answers in text instead.
+  const tutorModel = await model("tutor");
+  const system = `${await loadPrompt("task_author")}\n\nAlways answer by calling the record_task tool exactly once with the complete task. Never write the task as plain text.`;
   let chars = 0;
-  for await (const ev of res) {
-    if (ev.type === "content_block_delta" && ev.delta.type === "input_json_delta") {
-      chars += ev.delta.partial_json.length;
-      opts.onProgress?.(chars);
+  async function attempt() {
+    const res = llm().messages.stream({
+      model: tutorModel,
+      max_tokens: 20000,
+      system,
+      tools: [TOOL],
+      tool_choice: { type: "auto" },
+      messages: [{ role: "user", content: parts }],
+    });
+    for await (const ev of res) {
+      if (ev.type === "content_block_delta" && ev.delta.type === "input_json_delta") {
+        chars += ev.delta.partial_json.length;
+        opts.onProgress?.(chars);
+      }
     }
+    return res.finalMessage();
   }
-  const final = await res.finalMessage();
+  let final = await attempt();
+  if (!final.content.some((b) => b.type === "tool_use")) {
+    console.warn("Task agent answered without the tool, retrying", final.stop_reason);
+    chars = 0;
+    final = await attempt();
+  }
   const block = final.content.find((b) => b.type === "tool_use");
-  if (!block || block.type !== "tool_use") throw new Error("The task agent did not return a task");
-  const input = block.input as { note_to_author?: string; task?: Record<string, unknown> };
-  if (!input.task) throw new Error("The task agent returned an empty task");
+  if (!block || block.type !== "tool_use") throw new Error("The task agent did not return a task. Try again.");
   if (final.stop_reason === "max_tokens") throw new Error("The task was too long and got cut off. Try again.");
+  const input = block.input as { note_to_author?: string; task?: Record<string, unknown> };
+  if (!input.task) throw new Error("The task agent returned an empty task. Try again.");
   return { raw: input.task, note: input.note_to_author ?? "" };
 }

@@ -17,10 +17,10 @@ export async function GET(req: Request) {
       const r = await llm().messages.create(
         {
           model: out.model as string,
-          max_tokens: 200,
+          max_tokens: 2000,
           tools: [{ name: "record_task", description: "x", input_schema: { type: "object", properties: { note_to_author: { type: "string" }, givens: { type: "object", additionalProperties: { type: "number" } } }, required: ["note_to_author"] } }],
-          tool_choice: { type: "tool", name: "record_task" },
-          messages: [{ role: "user", content: "Call record_task with note_to_author = 'ok'." }],
+          tool_choice: { type: "auto" },
+          messages: [{ role: "user", content: "Call the record_task tool with note_to_author = 'ok'. Do not answer in text." }],
         },
         { timeout: 30_000 },
       );
