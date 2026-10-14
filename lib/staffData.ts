@@ -32,6 +32,12 @@ const MSG_COLS = "id, session_id, role, content, phase, word_count, response_ms,
 // "*" so the pages keep working before and after the skills column is added.
 const ANN_COLS = "*";
 
+type StudentRow = { id: string; class_id: string; nickname: string; display_name?: string | null; excluded?: boolean | null };
+// The name staff see: the edited name if someone set one, otherwise the name the student typed.
+export function displayName(s: { nickname: string; display_name?: string | null } | undefined | null): string {
+  return s ? (s.display_name?.trim() || s.nickname) : "?";
+}
+
 type ClassRow = { id: string; code: string; name: string | null; teacher_id: string | null; created_at: string; settings?: unknown };
 
 export async function listClasses(staff: StaffSession) {
@@ -85,9 +91,11 @@ export async function classDashboard(staff: StaffSession, classId: string) {
   const { cls } = loaded;
   const db = supabaseAdmin();
 
-  const { data: students } = await db.from("students").select("id, nickname").eq("class_id", cls.id);
-  const studentIds = (students ?? []).map((s) => s.id);
-  const nick = new Map((students ?? []).map((s) => [s.id, s.nickname]));
+  const { data: studentRows } = await db.from("students").select("*").eq("class_id", cls.id);
+  const students = (studentRows ?? []) as StudentRow[];
+  const studentIds = students.map((s) => s.id);
+  const byStudent = new Map(students.map((s) => [s.id, s]));
+  const researcherView = isResearcher(staff);
 
   const sessions = studentIds.length
     ? await fetchAll<{
@@ -95,6 +103,7 @@ export async function classDashboard(staff: StaffSession, classId: string) {
         student_id: string;
         task_id: string;
         lang: string;
+        gender: string;
         status: string;
         current_phase: string;
         started_at: string;
@@ -102,7 +111,7 @@ export async function classDashboard(staff: StaffSession, classId: string) {
       }>((from, to) =>
         db
           .from("sessions")
-          .select("id, student_id, task_id, lang, status, current_phase, started_at, ended_at")
+          .select("id, student_id, task_id, lang, gender, status, current_phase, started_at, ended_at")
           .in("student_id", studentIds)
           .order("started_at", { ascending: false })
           .range(from, to),
@@ -150,9 +159,13 @@ export async function classDashboard(staff: StaffSession, classId: string) {
     return {
       sessionId: s.id,
       studentId: s.student_id,
-      nickname: nick.get(s.student_id) ?? "?",
+      nickname: displayName(byStudent.get(s.student_id)),
+      excluded: byStudent.get(s.student_id)?.excluded === true,
       taskId: s.task_id,
       lang: s.lang as Lang,
+      gender: s.gender,
+      // The student's overall pattern so far (research coding) — researchers only.
+      pattern: researcherView ? ([...anns].reverse().find((a) => a.student_pattern)?.student_pattern ?? null) : null,
       status: s.status,
       currentPhase: s.current_phase,
       startedAt: s.started_at,
@@ -171,7 +184,7 @@ export async function classDashboard(staff: StaffSession, classId: string) {
     class: { id: cls.id, code: cls.code, name: cls.name },
     settings: normalizeSettings(cls.settings),
     tasks: [...tasks.values()],
-    students: (students ?? []).map((s) => ({ id: s.id, nickname: s.nickname })),
+    students: students.map((s) => ({ id: s.id, nickname: displayName(s), loginName: s.nickname, displayName: s.display_name ?? null, excluded: s.excluded === true })),
     sessions: rows,
   };
 }
@@ -184,7 +197,8 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
     .eq("id", sessionId)
     .maybeSingle();
   if (!s) return { error: 404 as const };
-  const { data: student } = await db.from("students").select("id, nickname, class_id").eq("id", s.student_id).single();
+  const { data: studentRow } = await db.from("students").select("*").eq("id", s.student_id).single();
+  const student = studentRow ? { ...(studentRow as StudentRow), nickname: displayName(studentRow as StudentRow) } : null;
   if (!student) return { error: 404 as const };
   const loaded = await loadClass(staff, student.class_id);
   if ("error" in loaded) return loaded;
@@ -293,7 +307,8 @@ export type ExportSession = {
   messages: (MessageRow & { analysis: AnnotationRow | null })[];
 };
 
-export async function exportData(staff: StaffSession, filter: { classId?: string; sessionId?: string }) {
+// Students staff hid from results ("excluded") are left out of class-level and all-class data.
+export async function exportData(staff: StaffSession, filter: { classId?: string; sessionId?: string; all?: boolean }) {
   if (!isResearcher(staff)) return { error: 403 as const };
   const db = supabaseAdmin();
 
@@ -305,11 +320,17 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
     const { data: cls } = await db.from("classes").select("id, code").eq("id", filter.classId).maybeSingle();
     if (!cls) return { error: 404 as const };
     classCode = cls.code;
-    const { data: students } = await db.from("students").select("id").eq("class_id", cls.id);
-    const ids = (students ?? []).map((s) => s.id);
+    const { data: students } = await db.from("students").select("*").eq("class_id", cls.id);
+    const ids = ((students ?? []) as StudentRow[]).filter((s) => !s.excluded).map((s) => s.id);
     const { data: ss } = ids.length
       ? await db.from("sessions").select("id").in("student_id", ids)
       : { data: [] as { id: string }[] };
+    sessionIds = (ss ?? []).map((s) => s.id);
+  } else if (filter.all) {
+    classCode = "all";
+    const { data: students } = await db.from("students").select("*");
+    const ids = ((students ?? []) as StudentRow[]).filter((s) => !s.excluded).map((s) => s.id);
+    const { data: ss } = ids.length ? await db.from("sessions").select("id").in("student_id", ids) : { data: [] as { id: string }[] };
     sessionIds = (ss ?? []).map((s) => s.id);
   } else {
     return { error: 400 as const };
@@ -318,7 +339,7 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
 
   const { data: sessions } = await db
     .from("sessions")
-    .select("id, task_id, lang, gender, status, started_at, ended_at, students(nickname, classes(code))")
+    .select("id, task_id, lang, gender, status, started_at, ended_at, students(*, classes(code))")
     .in("id", sessionIds)
     .order("started_at", { ascending: true });
   const messages = await fetchAll<MessageRow & { session_id: string }>((from, to) =>
@@ -331,7 +352,7 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
   const taskById = await getTasks((sessions ?? []).map((s) => s.task_id));
   const out: ExportSession[] = (sessions ?? []).map((s) => {
     // Supabase types nested selects loosely; read them defensively.
-    const st = s.students as unknown as { nickname?: string; classes?: { code?: string } } | null;
+    const st = s.students as unknown as (StudentRow & { classes?: { code?: string } }) | null;
     const task = taskById[s.task_id] ?? null;
     const phaseIds = task?.phases.map((p) => p.id) ?? [];
     const msgs = messages.filter((m) => m.session_id === s.id);
@@ -341,7 +362,7 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
     return {
       sessionId: s.id,
       classCode: st?.classes?.code ?? classCode,
-      name: st?.nickname ?? "",
+      name: st ? displayName(st) : "",
       taskId: s.task_id,
       taskTitle: task ? t(task.title, "he") : s.task_id,
       lang: s.lang,

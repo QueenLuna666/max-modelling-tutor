@@ -14,6 +14,10 @@ type Row = {
   sessionId: string;
   studentId: string;
   nickname: string;
+  excluded?: boolean;
+  lang?: string;
+  gender?: string;
+  pattern?: string | null;
   taskId: string;
   status: string;
   currentPhase: string;
@@ -80,7 +84,22 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
 
   const [taskId, setTaskId] = useState(d.tasks[0]?.id ?? "");
   const task = d.tasks.find((t) => t.id === taskId) ?? d.tasks[0];
-  const rows = useMemo(() => d.sessions.filter((s) => !task || s.taskId === task.id), [d.sessions, task]);
+  const [f, setF] = useState({ q: "", status: "all", lang: "all", gender: "all", pattern: "all", hidden: false });
+  const hiddenCount = d.sessions.filter((s) => s.excluded && (!task || s.taskId === task.id)).length;
+  const rows = useMemo(
+    () =>
+      d.sessions.filter(
+        (s) =>
+          (!task || s.taskId === task.id) &&
+          (f.hidden || !s.excluded) &&
+          (!f.q || s.nickname.toLowerCase().includes(f.q.toLowerCase())) &&
+          (f.status === "all" || s.status === f.status) &&
+          (f.lang === "all" || s.lang === f.lang) &&
+          (f.gender === "all" || s.gender === f.gender) &&
+          (f.pattern === "all" || s.pattern === f.pattern),
+      ),
+    [d.sessions, task, f],
+  );
   const active = rows.filter((r) => r.status === "active").length;
   const done = rows.filter((r) => r.status === "done").length;
   const flagged = rows.filter((r) => r.alerts.some((a) => a.severity === "warn"));
@@ -175,8 +194,10 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
         )}
       </Modal>
 
+      <FilterBar f={f} setF={setF} researcher={researcher} hiddenCount={hiddenCount} />
+
       <dl className="tabular grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label={L("תלמידים בכיתה", "طلاب الصف")} value={d.students.length} />
+        <Kpi label={L("תלמידים מוצגים", "الطلاب المعروضون")} value={new Set(rows.map((r) => r.studentId)).size} />
         <Kpi label={L("עובדים עכשיו", "يعملون الآن")} value={active} tone={active ? "accent" : undefined} />
         <Kpi label={L("סיימו", "أنهوا")} value={done} />
         <Kpi label={L("צריכים תשומת לב", "بحاجة إلى انتباه")} value={flagged.length} tone={flagged.length ? "warn" : undefined} />
@@ -229,11 +250,9 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.sessionId} className="border-b border-line last:border-0 hover:bg-paper/60">
+                  <tr key={r.sessionId} className={`border-b border-line last:border-0 hover:bg-paper/60 ${r.excluded ? "opacity-50" : ""}`}>
                     <td className="px-3 py-2">
-                      <Link href={`/staff/session/${r.sessionId}`} className="font-medium text-accent hover:underline">
-                        {r.nickname}
-                      </Link>
+                      <NameCell row={r} onChanged={reload} />
                       <span className="ms-2 text-xs text-muted">
                         {r.status === "done" ? L("סיים/ה", "أنهى/ت") : L("פעיל/ה", "نشط/ة")} · {fmtDate(r.startedAt, locale)}
                       </span>
@@ -386,5 +405,103 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
         {L("שמירה", "حفظ")}
       </button>
     </div>
+  );
+}
+
+type Filters = { q: string; status: string; lang: string; gender: string; pattern: string; hidden: boolean };
+
+function FilterBar({ f, setF, researcher, hiddenCount }: { f: Filters; setF: (f: Filters) => void; researcher: boolean; hiddenCount: number }) {
+  const { L } = useStaffLang();
+  const sel = "rounded-lg border border-line bg-surface px-2 py-1.5 text-sm";
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-sm">
+      <span className="font-medium">{L("סינון:", "تصفية:")}</span>
+      <input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} placeholder={L("חיפוש שם…", "بحث عن اسم…")} className={`${sel} w-36`} />
+      <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className={sel}>
+        <option value="all">{L("כל הסטטוסים", "كل الحالات")}</option>
+        <option value="active">{L("פעילים", "نشطون")}</option>
+        <option value="done">{L("סיימו", "أنهوا")}</option>
+      </select>
+      <select value={f.lang} onChange={(e) => setF({ ...f, lang: e.target.value })} className={sel}>
+        <option value="all">{L("כל השפות", "كل اللغات")}</option>
+        <option value="he">{L("עברית", "العبرية")}</option>
+        <option value="ar">{L("ערבית", "العربية")}</option>
+      </select>
+      <select value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })} className={sel}>
+        <option value="all">{L("בנים ובנות", "بنين وبنات")}</option>
+        <option value="male">{L("בנים", "بنين")}</option>
+        <option value="female">{L("בנות", "بنات")}</option>
+      </select>
+      {researcher && (
+        <select value={f.pattern} onChange={(e) => setF({ ...f, pattern: e.target.value })} className={sel}>
+          <option value="all">{L("כל הדפוסים", "كل الأنماط")}</option>
+          <option value="strong">{L("חזק", "قوي")}</option>
+          <option value="intermediate">{L("ביניים", "متوسط")}</option>
+          <option value="significant_difficulty">{L("קושי משמעותי", "صعوبة كبيرة")}</option>
+          <option value="insufficient_evidence">{L("אין די ראיות", "لا أدلة كافية")}</option>
+        </select>
+      )}
+      <label className="flex items-center gap-1.5 text-muted">
+        <input type="checkbox" checked={f.hidden} onChange={(e) => setF({ ...f, hidden: e.target.checked })} />
+        {L(`להציג מוסתרים (${hiddenCount})`, `عرض المخفيين (${hiddenCount})`)}
+      </label>
+      {(f.q || f.status !== "all" || f.lang !== "all" || f.gender !== "all" || f.pattern !== "all") && (
+        <button type="button" onClick={() => setF({ q: "", status: "all", lang: "all", gender: "all", pattern: "all", hidden: f.hidden })} className="text-accent underline">
+          {L("ניקוי", "مسح")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The student's name with rename (for reports) and hide-from-results controls.
+function NameCell({ row, onChanged }: { row: Row; onChanged: () => void }) {
+  const { L } = useStaffLang();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(row.nickname);
+  const [err, setErr] = useState("");
+  async function save(body: { displayName?: string | null; excluded?: boolean }) {
+    setErr("");
+    const r = await fetch(`/api/staff/students/${row.studentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) setErr(j.error ?? L("שגיאה", "خطأ"));
+    else {
+      setEditing(false);
+      onChanged();
+    }
+  }
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="w-28 rounded border border-line px-1.5 py-0.5 text-sm" autoFocus />
+        <button type="button" onClick={() => save({ displayName: name })} className="rounded bg-accent px-2 py-0.5 text-xs text-white">
+          {L("שמירה", "حفظ")}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted">
+          {L("ביטול", "إلغاء")}
+        </button>
+        {err && <span className="text-xs text-warn">{err}</span>}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Link href={`/staff/session/${row.sessionId}`} className="font-medium text-accent hover:underline">
+        {row.nickname}
+      </Link>
+      {row.excluded && <span className="rounded bg-paper px-1.5 text-[10px] text-muted">{L("מוסתר/ת", "مخفي/ة")}</span>}
+      <button type="button" onClick={() => setEditing(true)} title={L("שינוי השם בדוחות", "تغيير الاسم في التقارير")} className="rounded px-1 text-xs text-muted hover:bg-paper">
+        ✏️
+      </button>
+      <button
+        type="button"
+        onClick={() => save({ excluded: !row.excluded })}
+        title={row.excluded ? L("להחזיר לתוצאות", "إعادة إلى النتائج") : L("להסתיר מהתוצאות והניתוחים", "إخفاء من النتائج والتحليلات")}
+        className="rounded px-1 text-xs text-muted hover:bg-paper"
+      >
+        {row.excluded ? "👁" : "🙈"}
+      </button>
+      {err && <span className="text-xs text-warn">{err}</span>}
+    </span>
   );
 }

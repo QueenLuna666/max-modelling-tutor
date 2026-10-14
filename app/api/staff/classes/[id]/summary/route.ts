@@ -19,7 +19,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!task) return Response.json({ error: "עוד אין עבודה של תלמידים בכיתה הזו" }, { status: 400 });
   // Latest session of each student on this task.
   const latest = new Map<string, (typeof d.sessions)[number]>();
-  for (const s of d.sessions) if (s.taskId === task.id && !latest.has(s.studentId)) latest.set(s.studentId, s);
+  for (const s of d.sessions) if (s.taskId === task.id && !s.excluded && !latest.has(s.studentId)) latest.set(s.studentId, s);
   const rows = [...latest.values()];
   if (!rows.length) return Response.json({ error: "עוד אין עבודה של תלמידים במשימה הזו" }, { status: 400 });
 
