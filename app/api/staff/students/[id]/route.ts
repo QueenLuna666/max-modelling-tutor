@@ -1,4 +1,5 @@
-// PATCH /api/staff/students/:id — rename a student for reports, or hide them from results and analyses.
+// PATCH  /api/staff/students/:id — rename a student for reports, or hide/unhide them in results and analyses.
+// DELETE /api/staff/students/:id — delete the student and ALL their conversations and coding, permanently.
 // Body: { displayName?: string | null, excluded?: boolean }. The name the student typed is kept.
 import { canSeeClass, forbidden, getStaff, unauthorized } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -23,5 +24,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const missing = /display_name|excluded/.test(error.message);
     return Response.json({ error: missing ? "צריך להריץ את migration_006_limits.sql ב-Supabase" : error.message }, { status: 500 });
   }
+  return Response.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const staff = await getStaff();
+  if (!staff) return unauthorized();
+  const { id } = await ctx.params;
+  const db = supabaseAdmin();
+  const { data: student } = await db.from("students").select("id, class_id").eq("id", id).maybeSingle();
+  if (!student) return Response.json({ error: "Not found" }, { status: 404 });
+  const { data: cls } = await db.from("classes").select("id, teacher_id").eq("id", student.class_id).maybeSingle();
+  if (!cls || !canSeeClass(staff, cls)) return forbidden();
+  // sessions, messages and annotations are removed with the student (on delete cascade).
+  const { error } = await db.from("students").delete().eq("id", id);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }

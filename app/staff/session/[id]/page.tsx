@@ -6,6 +6,7 @@ import { StaffShell, useStaffData } from "@/components/StaffShell";
 import { JourneyChart } from "@/components/JourneyChart";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
 import { MessageText } from "@/components/MessageText";
+import { AskPanel } from "@/components/AskPanel";
 import { useStaffLang } from "@/lib/staffLang";
 import { HINT_AR, HINT_HE } from "@/lib/hints";
 
@@ -437,10 +438,6 @@ function ProcessSummary({ sessionId, saved }: { sessionId: string; saved: string
 // Ask the assistant about this student's thinking (multi-turn, kept on this page only).
 function AskAboutStudent({ sessionId, name, researcher }: { sessionId: string; name: string; researcher: boolean }) {
   const { L } = useStaffLang();
-  const [turns, setTurns] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
-  const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
   const suggestions = researcher
     ? [
         L("איך התלמיד/ה חשב/ה על ההנחות?", "كيف فكّر/ت الطالب/ة في الافتراضات؟"),
@@ -452,70 +449,14 @@ function AskAboutStudent({ sessionId, name, researcher }: { sessionId: string; n
         L("איך התלמיד/ה חשב/ה על המשימה?", "كيف فكّر/ت الطالب/ة في المهمة؟"),
         L("במה כדאי לעזור לו/ה בשיעור הבא?", "بماذا يجدر مساعدته/ا في الدرس القادم؟"),
       ];
-
-  async function ask(text: string) {
-    const question = text.trim();
-    if (!question || busy) return;
-    setBusy(true);
-    setErr("");
-    setQ("");
-    const r = await fetch(`/api/staff/sessions/${sessionId}/ask`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, history: turns }),
-    });
-    const j = await r.json().catch(() => ({}));
-    setBusy(false);
-    if (!r.ok) {
-      setErr(j.error ?? L("שגיאה", "خطأ"));
-      setQ(question);
-      return;
-    }
-    setTurns((t) => [...t, { role: "user", content: question }, { role: "assistant", content: j.answer }]);
-  }
-
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
-      <h2 className="font-semibold">💬 {L(`שאלו על ${name}`, `اسألوا عن ${name}`)}</h2>
-      <p className="mt-1 text-sm text-muted">
-        {L("שאלה על אופן החשיבה של התלמיד/ה. התשובה מבוססת רק על השיחה, עם ציטוטים ומספרי הודעות.", "سؤال عن طريقة تفكير الطالب/ة. الإجابة مبنية على المحادثة فقط، مع اقتباسات وأرقام الرسائل.")}
-      </p>
-      <div className="mt-3 space-y-3">
-        {turns.map((t, i) =>
-          t.role === "user" ? (
-            <p key={i} className="ms-auto w-fit max-w-[90%] rounded-2xl bg-accent px-3 py-2 text-sm text-white">
-              {t.content}
-            </p>
-          ) : (
-            <div key={i} className="rounded-2xl bg-paper px-4 py-3">
-              <MiniMarkdown text={t.content} />
-            </div>
-          ),
-        )}
-        {busy && <p className="animate-pulse text-sm text-muted">{L("קורא את השיחה ועונה… (כחצי דקה)", "يقرأ المحادثة ويجيب… (نحو نصف دقيقة)")}</p>}
-      </div>
-      {turns.length === 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <button key={s} type="button" disabled={busy} onClick={() => ask(s)} className="rounded-full border border-line px-3 py-1 text-xs hover:border-accent hover:text-accent disabled:opacity-50">
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(q);
-        }}
-        className="mt-3 flex gap-2"
-      >
-        <input value={q} onChange={(e) => setQ(e.target.value)} disabled={busy} placeholder={L("שאלה על התלמיד/ה…", "سؤال عن الطالب/ة…")} className="flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-sm" />
-        <button type="submit" disabled={busy || !q.trim()} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-          {L("שאלה", "اسأل")}
-        </button>
-      </form>
-      {err && <p className="mt-2 text-sm text-warn">{err}</p>}
-    </section>
+    <AskPanel
+      endpoint={`/api/staff/sessions/${sessionId}/ask`}
+      title={L(`שאלו על ${name}`, `اسألوا عن ${name}`)}
+      intro={L("שאלה על אופן החשיבה של התלמיד/ה. התשובה מבוססת רק על השיחה, עם ציטוטים ומספרי הודעות.", "سؤال عن طريقة تفكير الطالب/ة. الإجابة مبنية على المحادثة فقط، مع اقتباسات وأرقام الرسائل.")}
+      suggestions={suggestions}
+      placeholder={L("שאלה על התלמיד/ה…", "سؤال عن الطالب/ة…")}
+      busyText={L("קורא את השיחה ועונה… (כחצי דקה)", "يقرأ المحادثة ويجيب… (نحو نصف دقيقة)")}
+    />
   );
 }

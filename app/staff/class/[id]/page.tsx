@@ -6,6 +6,7 @@ import { isResearcherRole, StaffShell, useStaffData } from "@/components/StaffSh
 import { Modal } from "@/components/Modal";
 import { ClassQr } from "@/components/ClassQr";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
+import { AskPanel } from "@/components/AskPanel";
 import { FEATURES, type ClassSettings, type FeatureKey } from "@/lib/classSettings";
 import { useStaffLang } from "@/lib/staffLang";
 
@@ -291,7 +292,39 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
           <span>{L("↺ = חזר/ה לשלב · מסגרת = השלב הנוכחי", "↺ = عاد/ت إلى المرحلة · الإطار = المرحلة الحالية")}</span>
         </div>
       </section>
+
+      <AskAboutClass classId={d.class.id} researcher={researcher} />
     </div>
+  );
+}
+
+// Ask the assistant about the whole class (hidden students are left out on the server).
+function AskAboutClass({ classId, researcher }: { classId: string; researcher: boolean }) {
+  const { L } = useStaffLang();
+  const suggestions = researcher
+    ? [
+        L("אילו קבוצות של תלמידים רואים בכיתה לפי דרך העבודה?", "ما مجموعات الطلاب التي تظهر في الصف حسب طريقة العمل؟"),
+        L("באיזה שלב רוב הכיתה נתקעה, ואילו קודי קושי חוזרים?", "في أي مرحلة تعثّر معظم الصف، وما رموز الصعوبة المتكرّرة؟"),
+        L("מי ניסח/ה הנחות מפורשות ומי לא? תן ציטוטים", "من صاغ/ت افتراضات صريحة ومن لا؟ أعطِ اقتباسات"),
+        L("האם יש הבדל בין מי שקיבל רמזי H3–H4 לבין השאר?", "هل هناك فرق بين من تلقّى تلميحات H3–H4 والباقين؟"),
+      ]
+    : [
+        L("מה הקושי הנפוץ ביותר בכיתה?", "ما الصعوبة الأكثر شيوعًا في الصف؟"),
+        L("את מי כדאי להושיב יחד בזוגות בשיעור הבא?", "من يجدر أن نُجلس معًا في أزواج في الدرس القادم؟"),
+        L("אילו תלמידים לא התקדמו מהשלב הראשון ולמה?", "أي طلاب لم يتقدّموا من المرحلة الأولى ولماذا؟"),
+      ];
+  return (
+    <AskPanel
+      endpoint={`/api/staff/classes/${classId}/ask`}
+      title={L("שאלו על הכיתה", "اسألوا عن الصف")}
+      intro={L(
+        "שאלה על כל הכיתה יחד: השוואות, קבוצות, דפוסים. התשובה מבוססת רק על השיחות (בלי תלמידים מוסתרים), עם שם התלמיד/ה ומספר ההודעה. לשאלה על תלמיד/ה אחד/ת — היכנסו לשיחה שלו/ה.",
+        "سؤال عن الصف كله: مقارنات، مجموعات، أنماط. الإجابة مبنية على المحادثات فقط (بدون الطلاب المخفيين)، مع اسم الطالب/ة ورقم الرسالة. لسؤال عن طالب/ة واحد/ة — ادخلوا إلى محادثته/ا.",
+      )}
+      suggestions={suggestions}
+      placeholder={L("שאלה על הכיתה…", "سؤال عن الصف…")}
+      busyText={L("קורא את השיחות של כל הכיתה ועונה… (עד דקה)", "يقرأ محادثات الصف كله ويجيب… (حتى دقيقة)")}
+    />
   );
 }
 
@@ -454,19 +487,25 @@ function FilterBar({ f, setF, researcher, hiddenCount }: { f: Filters; setF: (f:
   );
 }
 
-// The student's name with rename (for reports) and hide-from-results controls.
+// The student's name with rename (for reports), hide/unhide, and permanent delete.
 function NameCell({ row, onChanged }: { row: Row; onChanged: () => void }) {
   const { L } = useStaffLang();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(row.nickname);
   const [err, setErr] = useState("");
-  async function save(body: { displayName?: string | null; excluded?: boolean }) {
+  async function call(method: "PATCH" | "DELETE", body?: { displayName?: string | null; excluded?: boolean }) {
     setErr("");
-    const r = await fetch(`/api/staff/students/${row.studentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch(`/api/staff/students/${row.studentId}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) setErr(j.error ?? L("שגיאה", "خطأ"));
     else {
       setEditing(false);
+      setConfirmDelete(false);
       onChanged();
     }
   }
@@ -474,7 +513,7 @@ function NameCell({ row, onChanged }: { row: Row; onChanged: () => void }) {
     return (
       <span className="inline-flex items-center gap-1">
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="w-28 rounded border border-line px-1.5 py-0.5 text-sm" autoFocus />
-        <button type="button" onClick={() => save({ displayName: name })} className="rounded bg-accent px-2 py-0.5 text-xs text-white">
+        <button type="button" onClick={() => call("PATCH", { displayName: name })} className="rounded bg-accent px-2 py-0.5 text-xs text-white">
           {L("שמירה", "حفظ")}
         </button>
         <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted">
@@ -484,22 +523,39 @@ function NameCell({ row, onChanged }: { row: Row; onChanged: () => void }) {
       </span>
     );
   }
+  if (confirmDelete) {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1 rounded-lg bg-warn-soft px-2 py-1 text-xs text-warn">
+        {L(`למחוק את ${row.nickname} וכל השיחות לצמיתות?`, `حذف ${row.nickname} وكل المحادثات نهائيًا؟`)}
+        <button type="button" onClick={() => call("DELETE")} className="rounded bg-warn px-2 py-0.5 font-semibold text-white">
+          {L("כן, למחוק", "نعم، احذف")}
+        </button>
+        <button type="button" onClick={() => setConfirmDelete(false)} className="rounded border border-warn/40 px-2 py-0.5">
+          {L("ביטול", "إلغاء")}
+        </button>
+        {err && <span>{err}</span>}
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex flex-wrap items-center gap-1">
       <Link href={`/staff/session/${row.sessionId}`} className="font-medium text-accent hover:underline">
         {row.nickname}
       </Link>
-      {row.excluded && <span className="rounded bg-paper px-1.5 text-[10px] text-muted">{L("מוסתר/ת", "مخفي/ة")}</span>}
       <button type="button" onClick={() => setEditing(true)} title={L("שינוי השם בדוחות", "تغيير الاسم في التقارير")} className="rounded px-1 text-xs text-muted hover:bg-paper">
         ✏️
       </button>
-      <button
-        type="button"
-        onClick={() => save({ excluded: !row.excluded })}
-        title={row.excluded ? L("להחזיר לתוצאות", "إعادة إلى النتائج") : L("להסתיר מהתוצאות והניתוחים", "إخفاء من النتائج والتحليلات")}
-        className="rounded px-1 text-xs text-muted hover:bg-paper"
-      >
-        {row.excluded ? "👁" : "🙈"}
+      {row.excluded ? (
+        <button type="button" onClick={() => call("PATCH", { excluded: false })} className="rounded-full border border-accent px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent-soft">
+          ↩ {L("החזרה לתוצאות", "إعادة إلى النتائج")}
+        </button>
+      ) : (
+        <button type="button" onClick={() => call("PATCH", { excluded: true })} title={L("להסתיר מהתוצאות והניתוחים", "إخفاء من النتائج والتحليلات")} className="rounded px-1 text-xs text-muted hover:bg-paper">
+          🙈
+        </button>
+      )}
+      <button type="button" onClick={() => setConfirmDelete(true)} title={L("מחיקה לצמיתות", "حذف نهائي")} className="rounded px-1 text-xs text-muted hover:bg-warn-soft">
+        🗑
       </button>
       {err && <span className="text-xs text-warn">{err}</span>}
     </span>

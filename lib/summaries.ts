@@ -178,3 +178,74 @@ ${lines.join("\n")}`;
     .trim();
   return { answer, usage: res.usage, model: m };
 }
+
+// ---- Chat about the WHOLE CLASS (all its visible students and conversations) ----
+const ASK_CLASS_SYSTEM = `You are a research assistant of the MtED mathematics-education lab (Technion). A researcher or a teacher asks you questions about a WHOLE CLASS whose students worked on open mathematical modelling tasks with the AI tutor MAX. You get, for every student: a profile line (task, status, how far they got, moves back, hints) and their own messages, numbered per student, with the lab's coding of each message when available.
+How to answer:
+- Answer only from the data. Compare students, find groups and patterns, count ("5 of 12 students …").
+- Support claims with short quotes and a reference: the student's name and message number, e.g. (Noa #4 "…"). Never invent.
+- Distinguish what students did independently from what followed MAX's hints.
+- Say clearly when the data is not enough to answer.
+- Be concise: a short paragraph, a few bullets or a small table. Use ### headings only if the answer is long.
+- Answer in the language of the question (Hebrew or Arabic).`;
+
+type ClassSession = {
+  name: string;
+  taskTitle: string;
+  lang: string;
+  gender: string;
+  status: string;
+  phases: { id: string; label: string }[];
+  metrics: { studentMessages: number; backMoves: number; furthestPhase: string | null; phasesCompleted: number; hints: Record<string, number> };
+  messages: {
+    role: string;
+    content: string;
+    phase?: string | null;
+    analysis: { phase?: string | null; level?: string | null; performance?: string | null; student_pattern?: string | null; challenge?: string | null; skills?: string[] | null } | null;
+  }[];
+};
+
+export async function askAboutClass(
+  className: string,
+  sessions: ClassSession[],
+  question: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  audience: Audience,
+): Promise<{ answer: string; usage: unknown; model: string }> {
+  // Keep the prompt a reasonable size for big classes: fewer messages per student, shorter messages.
+  const perStudent = sessions.length > 30 ? 12 : sessions.length > 15 ? 20 : 35;
+  const blocks = sessions.map((s) => {
+    const phaseName = new Map(s.phases.map((p) => [p.id, p.label]));
+    const pattern = [...s.messages].reverse().find((m) => m.analysis?.student_pattern)?.analysis?.student_pattern;
+    const head = `## ${s.name} (${s.gender === "female" ? "בת" : "בן"}, ${s.lang}) · task: ${s.taskTitle} · ${s.status === "done" ? "finished" : "working"} · furthest phase: ${phaseName.get(s.metrics.furthestPhase ?? "") ?? "-"} · phases completed: ${s.metrics.phasesCompleted} · moves back: ${s.metrics.backMoves} · student messages: ${s.metrics.studentMessages} · hints given: ${JSON.stringify(s.metrics.hints)}${audience === "researcher" && pattern ? ` · overall pattern: ${pattern}` : ""}`;
+    let n = 0;
+    const lines: string[] = [];
+    for (const m of s.messages) {
+      if (m.role !== "student" || m.phase === "extension") continue;
+      n += 1;
+      const a = m.analysis;
+      const tags =
+        a && audience === "researcher"
+          ? ` [${phaseName.get(a.phase ?? "") ?? a.phase ?? "-"}; ${a.level ?? a.performance ?? "-"}${a.challenge ? `; ${a.challenge}` : ""}${a.skills?.length ? `; ${a.skills.join(",")}` : ""}]`
+          : ` [${phaseName.get(a?.phase ?? m.phase ?? "") ?? "-"}]`;
+      lines.push(`#${n}${tags}: ${withoutDrawings(m.content, "[drawing]").replace(/\s+/g, " ").slice(0, 300)}`);
+    }
+    const shown = lines.length > perStudent ? [`(… ${lines.length - perStudent} earlier messages not shown)`, ...lines.slice(-perStudent)] : lines;
+    return `${head}\n${shown.join("\n") || "(no messages yet)"}`;
+  });
+  const data = `Class: ${className} · ${sessions.length} conversations
+${audience === "researcher" ? "Coding in brackets: [phase; level; difficulty code; skill codes]" : "Phase of each message in brackets."}
+
+${blocks.join("\n\n")}`;
+  const system = audience === "teacher" ? `${ASK_CLASS_SYSTEM}\n${FOR_TEACHER}` : ASK_CLASS_SYSTEM;
+  const turns = history.length
+    ? [{ role: "user" as const, content: `${data}\n\n---\nQuestion: ${history[0].content}` }, ...history.slice(1), { role: "user" as const, content: question }]
+    : [{ role: "user" as const, content: `${data}\n\n---\nQuestion: ${question}` }];
+  const m = await model("tutor");
+  const res = await llm().messages.create({ model: m, max_tokens: 4000, system, messages: turns }, { timeout: 120_000 });
+  const answer = res.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("")
+    .trim();
+  return { answer, usage: res.usage, model: m };
+}
