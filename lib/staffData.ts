@@ -228,7 +228,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
     },
     phases: task?.phases.map((p) => ({ id: p.id, label: t(p.label, "he") })) ?? [],
     challengeLabels: researcher ? codeLabels() : {},
-    journey: researcher ? journey : { ...journey, points: journey.points.map((p) => ({ ...p, performance: null })) },
+    journey: researcher ? journey : { ...journey, points: journey.points.map((p) => ({ ...p, performance: null, level: null })) },
     metrics: researcher ? metrics : teacherMetrics(metrics),
     alerts: sessionAlerts(s.status, messages, annotations, phaseIds[phaseIds.length - 1] ?? ""),
     messages: messages.map((m) => {

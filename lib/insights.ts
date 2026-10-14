@@ -46,6 +46,7 @@ export type JourneyPoint = {
   phase: string;
   phaseIndex: number;
   performance: string | null;
+  level: string | null; // research team's level (strong / intermediate / significant_difficulty / insufficient_evidence)
   at: string;
   back: boolean; // moved to an earlier phase than the previous point
 };
@@ -93,6 +94,7 @@ export function buildJourney(
       phase,
       phaseIndex,
       performance: a?.performance ?? null,
+      level: a?.level ?? null,
       at: m.created_at,
       back,
     });
