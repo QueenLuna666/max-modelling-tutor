@@ -1,5 +1,5 @@
-// Task registry. Each task lives in tasks/<id>.json; add new tasks here.
-// JSON is imported (not read from disk) so it is always bundled on Vercel.
+// Task types and helpers. Built-in tasks live in tasks/<id>.json (imported, so they are bundled
+// on Vercel); tasks written in the studio live in the database — see lib/taskStore.ts.
 import speedometer from "../tasks/speedometer.json";
 
 export type Lang = "he" | "ar" | "en";
@@ -33,16 +33,12 @@ export type Task = {
   phases: Phase[];
 };
 
-const TASKS: Record<string, Task> = {
+const BUILT_IN: Record<string, Task> = {
   speedometer: speedometer as unknown as Task,
 };
 
-export function getTask(id: string): Task | null {
-  return TASKS[id] ?? null;
-}
-
-export function listTasks(): Task[] {
-  return Object.values(TASKS);
+export function builtInTasks(): Record<string, Task> {
+  return BUILT_IN;
 }
 
 export function getPhase(task: Task, phaseId: string): Phase {

@@ -85,6 +85,13 @@ export function StaffShell({
           </nav>
           {me && (
             <div className="flex items-center gap-3 text-sm">
+              <Link href="/staff" className="rounded-lg px-2 py-1 hover:bg-paper">
+                כיתות
+              </Link>
+              <Link href="/staff/studio" className="rounded-lg bg-accent-soft px-2.5 py-1 font-medium text-accent-strong hover:bg-accent/15">
+                ✨ סטודיו משימות
+              </Link>
+              <span aria-hidden className="text-line">|</span>
               <span>
                 {me.name} · <span className="text-muted">{ROLE_LABEL[me.role]}</span>
               </span>

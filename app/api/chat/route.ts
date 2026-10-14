@@ -3,7 +3,8 @@
 // Body: { sessionId: string, content: string, responseMs?: number }
 // Response: text/plain stream. Header X-Phase = the step MAX is guiding after this turn.
 import { supabaseAdmin } from "@/lib/supabase";
-import { getTask, nextPhaseId, type Gender, type Lang } from "@/lib/tasks";
+import { nextPhaseId, type Gender, type Lang } from "@/lib/tasks";
+import { getTask } from "@/lib/taskStore";
 import { buildSystemPrompt, loadBasePrompt } from "@/lib/buildPrompt";
 import { planResponse, type Plan } from "@/lib/policy";
 import { analyzeMessage } from "@/lib/analyzer";
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   if (!session) return Response.json({ error: "Session not found" }, { status: 404 });
   if (session.status !== "active") return Response.json({ error: "המשימה כבר הסתיימה" }, { status: 409 });
 
-  const task = getTask(session.task_id);
+  const task = await getTask(session.task_id);
   if (!task) return Response.json({ error: "Task not found" }, { status: 404 });
 
   // Conversation before this message (for the analyzer and for MAX).

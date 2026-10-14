@@ -1,6 +1,7 @@
 // GET /api/session/:id — resume a student session after a page refresh.
 import { supabaseAdmin } from "@/lib/supabase";
-import { getTask, publicTask, type Lang } from "@/lib/tasks";
+import { publicTask, type Lang } from "@/lib/tasks";
+import { getTask } from "@/lib/taskStore";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -11,7 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .eq("id", id)
     .maybeSingle();
   if (!session) return Response.json({ error: "Session not found" }, { status: 404 });
-  const task = getTask(session.task_id);
+  const task = await getTask(session.task_id);
   if (!task) return Response.json({ error: "Task not found" }, { status: 404 });
 
   const { data: messages } = await db

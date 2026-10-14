@@ -5,7 +5,7 @@ import path from "node:path";
 
 const cache = new Map<string, string>();
 
-export async function loadPrompt(name: "max_base" | "analyzer"): Promise<string> {
+export async function loadPrompt(name: "max_base" | "analyzer" | "task_author" | "summary"): Promise<string> {
   const hit = cache.get(name);
   if (hit) return hit;
   const text = await readFile(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");

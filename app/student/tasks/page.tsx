@@ -17,7 +17,7 @@ export default function TaskLibrary() {
       router.replace("/student");
       return;
     }
-    fetch(`/api/tasks?lang=${s.lang}`)
+    fetch(`/api/tasks?lang=${s.lang}&class=${encodeURIComponent(s.classCode)}`)
       .then((r) => r.json())
       .then((d) => setTasks(d.tasks))
       .catch(() => setTasks([]));

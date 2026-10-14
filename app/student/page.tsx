@@ -1,12 +1,22 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { STUDENT_KEY, tr, type UiGender, type UiLang } from "@/lib/i18n";
 
-export default function StudentLogin() {
+export default function StudentLoginPage() {
+  return (
+    <Suspense>
+      <StudentLogin />
+    </Suspense>
+  );
+}
+
+// ?code=ABC123 fills the class code (from the class QR); ?task=<id> opens that task after login.
+function StudentLogin() {
   const router = useRouter();
+  const params = useSearchParams();
   const [lang, setLang] = useState<UiLang>("he");
-  const [classCode, setClassCode] = useState("");
+  const [classCode, setClassCode] = useState(params.get("code") ?? "");
   const [nickname, setNickname] = useState("");
   const [gender, setGender] = useState<UiGender | null>(null);
   const [error, setError] = useState("");
@@ -25,7 +35,8 @@ export default function StudentLogin() {
     } catch {
       /* storage blocked: the task page will send the student back here */
     }
-    router.push("/student/tasks");
+    const task = params.get("task");
+    router.push(task && /^[\w-]+$/.test(task) ? `/student/task/${task}` : "/student/tasks");
   }
 
   const g = gender ?? "male";

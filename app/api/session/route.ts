@@ -3,7 +3,8 @@
 // Returns: { sessionId, task, opening }
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getTask, openingFor, publicTask, type Gender, type Lang } from "@/lib/tasks";
+import { openingFor, publicTask, type Gender, type Lang } from "@/lib/tasks";
+import { getTask } from "@/lib/taskStore";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "השם ארוך מדי (עד 30 תווים)" }, { status: 400 });
   }
 
-  const task = getTask(taskId);
+  const task = await getTask(taskId);
   if (!task) return NextResponse.json({ error: "המשימה לא נמצאה" }, { status: 404 });
 
   const db = supabaseAdmin();

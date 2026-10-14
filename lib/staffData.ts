@@ -2,7 +2,8 @@
 import "server-only";
 import { supabaseAdmin } from "./supabase";
 import { canSeeClass, isResearcher, type StaffSession } from "./auth";
-import { getTask, t, type Lang } from "./tasks";
+import { t, type Lang } from "./tasks";
+import { getTask, getTasks } from "./taskStore";
 import { codeLabels } from "./framework";
 import { sessionMetrics, type SessionMetrics } from "./metrics";
 import {
@@ -130,8 +131,9 @@ export async function classDashboard(staff: StaffSession, classId: string) {
     : [];
 
   const tasks = new Map<string, { id: string; title: string; phases: { id: string; label: string }[] }>();
+  const taskById = await getTasks(sessions.map((s) => s.task_id));
   const rows = sessions.map((s) => {
-    const task = getTask(s.task_id);
+    const task = taskById[s.task_id] ?? null;
     const phaseIds = task?.phases.map((p) => p.id) ?? [];
     if (task && !tasks.has(task.id)) {
       tasks.set(task.id, {
@@ -185,7 +187,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
   const loaded = await loadClass(staff, student.class_id);
   if ("error" in loaded) return loaded;
 
-  const task = getTask(s.task_id);
+  const task = await getTask(s.task_id);
   const phaseIds = task?.phases.map((p) => p.id) ?? [];
   const messages = await fetchAll<MessageRow>((from, to) =>
     db.from("messages").select(MSG_COLS).eq("session_id", s.id).order("created_at", { ascending: true }).range(from, to),
@@ -202,6 +204,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
     .select("id, task_id, status, started_at")
     .eq("student_id", student.id)
     .order("started_at", { ascending: false });
+  const siblingTasks = await getTasks((siblings ?? []).map((x) => x.task_id));
 
   return {
     researcher,
@@ -256,7 +259,7 @@ export async function sessionDetail(staff: StaffSession, sessionId: string) {
     }),
     siblings: (siblings ?? []).map((x) => ({
       id: x.id,
-      taskTitle: getTask(x.task_id) ? t(getTask(x.task_id)!.title, "he") : x.task_id,
+      taskTitle: siblingTasks[x.task_id] ? t(siblingTasks[x.task_id].title, "he") : x.task_id,
       status: x.status,
       startedAt: x.started_at,
     })),
@@ -317,10 +320,11 @@ export async function exportData(staff: StaffSession, filter: { classId?: string
     db.from("annotations").select(ANN_COLS).in("session_id", sessionIds).order("created_at", { ascending: true }).range(from, to),
   );
 
+  const taskById = await getTasks((sessions ?? []).map((s) => s.task_id));
   const out: ExportSession[] = (sessions ?? []).map((s) => {
     // Supabase types nested selects loosely; read them defensively.
     const st = s.students as unknown as { nickname?: string; classes?: { code?: string } } | null;
-    const task = getTask(s.task_id);
+    const task = taskById[s.task_id] ?? null;
     const phaseIds = task?.phases.map((p) => p.id) ?? [];
     const msgs = messages.filter((m) => m.session_id === s.id);
     const anns = annotations.filter((a) => a.session_id === s.id);
