@@ -32,6 +32,23 @@ You do not talk to the student. You record your coding by calling the `record_an
 
 **asks_for_answer** — true ONLY if the student explicitly asks MAX to replace their work with a ready product (a full solution, the calculations, the model, a write-up to copy or submit), as defined in part C ("wants a ready answer"). False for: a single "what's the answer?", asking the meaning of a number or word, "why do we divide?", asking to check their own calculation, asking for an example in order to understand. (Asking MAX to do a plain arithmetic step for a calculation they set up themselves is NOT asking for the answer.)
 
+**request_type** — what the student asks MAX for in this message (research team's hint guidelines):
+- `info`: an explicit request for a known formula or equation, a definition, or established real-world data (e.g. "what's the formula for a circle's circumference?", "how many teeth does such a gear usually have?", "what size are car wheels?"), or clear evidence of real difficulty finding such information (a failed search, a failed attempt to recall a formula). A general difficulty or an error alone is NOT `info`.
+- `check`: asks MAX to check a calculation or step they already did themselves.
+- `full_solution`: explicitly asks MAX to replace their work (same as asks_for_answer = true).
+- `stop`: explicitly asks to stop or end now.
+- `none`: anything else.
+
+**response_to_last_hint** — if MAX's previous message gave a hint or a question on this same point: `progressed` (the student's explanation or work now lets them continue), `partial` (some progress, part still not understood), `same_difficulty` (the same difficulty remains). `no_previous_hint` if MAX gave no hint before, or the student moved to a different point.
+
+**frustration_stated** — true only if the student SAYS explicitly that they are frustrated, tired, or want to give up ("I tried and I'm frustrated"). Never infer it from short messages, errors or silence.
+
+**basic_meaning_missing** — true if there is evidence that the basis is missing: the student does not grasp the basic meaning of a quantity or relation needed for the current step, even after help that was already given.
+
+**ready_to_finish** — true only if, across the conversation, the student has (1) given a final answer to the task's goal with clear meaning and units, (2) shown how it was obtained with no known substantial error left, and (3) checked its fit to reality on a relevant basis (a measurement, well-founded outside knowledge, a comparison, or examining an assumption/limit) and explained what the check shows, with no open substantial contradiction. A bare number, a calculator check or "I understood" is not enough.
+
+**choice_after_offer** — if MAX's previous message asked whether to finish or continue with another challenge: `finish`, `continue`, or `unclear`. Otherwise `none`.
+
 **phase_complete** — true only if this message (together with what the student said before in this phase) shows the desired outcome of the phase MAX is currently guiding, so MAX can move on. Be strict: a bare number without an explanation is not enough; content MAX supplied and the student only repeated is not enough.
 
 Be consistent: the same message in the same context should always get the same coding. Never invent a process that was not seen.

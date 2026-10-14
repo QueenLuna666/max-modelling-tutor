@@ -27,14 +27,19 @@ export function buildSystemPrompt(opts: {
     .map((p, i) => `${i + 1}. ${p.id} — ${t(p.label, "en")}${p.id === phase.id ? "   ← CURRENT" : ""}`)
     .join("\n");
 
-  const hintBlock =
-    plan && plan.hintLevel !== "none"
-      ? `Use this hint (rephrase it in the student's language, do not add numbers it doesn't contain):\n"${phase.hints[plan.hintLevel]}"`
-      : `Prepared hints for this step, weakest first (use only if needed, lowest level that works):\n- light: ${phase.hints.light}\n- medium: ${phase.hints.medium}\n- strong: ${phase.hints.strong}`;
+  // The task's prepared hints are written per phase at three strengths; they serve as material for
+  // H1 (light), H2 (medium) and H3 (strong). H4 is composed by MAX (another small example or a limited choice).
+  const hintBlock = (() => {
+    const material = `Prepared hint material for this step (adapt it to the student's actual gap; do not paste it):\n- H1: ${phase.hints.light}\n- H2: ${phase.hints.medium}\n- H3: ${phase.hints.strong}`;
+    if (!plan || ["none", "light", "medium", "strong", "step"].indexOf(plan.hintLevel) < 1) return material;
+    if (plan.hintLevel === "step") return `${material}\nThis turn is H4: build a tiny solved example with DIFFERENT numbers, or a limited choice, or explain one basic concept — then ask for one small action in the student's own task.`;
+    const code = { light: "H1", medium: "H2", strong: "H3" }[plan.hintLevel as "light" | "medium" | "strong"];
+    return `${material}\nThis turn is ${code}: base your hint on the ${code} material, aimed at the specific gap, in the student's language; do not add numbers it doesn't contain.`;
+  })();
 
   const planBlock = plan
-    ? `# Response plan for this turn\n${plan.instruction}`
-    : `# Response plan for this turn\nNo analysis yet. Judge the student's performance and motivation yourself and follow the adaptation table.`;
+    ? `# Response plan for this turn (research team's hint guidelines)\n${plan.instruction}`
+    : `# Response plan for this turn\nNo analysis is available. Judge from the conversation: what the student asks for, what they already did, and the smallest support that lets them take the next step (start at H1).`;
 
   return `${base}
 
@@ -110,6 +115,6 @@ function analysisBlock(a: Analysis): string {
 Phases the student is actually working in now (the process is NOT linear — respond to where the student really is, even if it differs from the current step above):
 ${seen}
 Overall pattern so far: ${LEVEL_EN[a.student_pattern]}.${a.asks_for_answer ? "\nThe student explicitly asked you to replace their work with a ready answer: refuse kindly and invite them back in with one small step — whatever their level." : ""}
-How to respond to the pattern: strong → push their reasoning further (a challenge, a "what if", a check against reality); intermediate → aim one focused question or hint at the specific gap, building on what they already did; significant difficulty → slow down, return to the meaning of one quantity or relation, offer a very small concrete step or a choice between two options, and check understanding in their own words; not enough evidence → ask them to explain their thinking or what they mean.
+Use the level in the aspect being discussed now, not a general label of the student; the Response plan below already applies the research team's hint guidelines. Never tell the student their level or pattern.
 `;
 }

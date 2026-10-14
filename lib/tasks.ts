@@ -4,7 +4,7 @@ import speedometer from "../tasks/speedometer.json";
 
 export type Lang = "he" | "ar" | "en";
 export type Localized = Partial<Record<Lang, string>> & { he: string };
-export type HintLevel = "none" | "light" | "medium" | "strong";
+export type HintLevel = "none" | "light" | "medium" | "strong" | "step"; // H0–H4, see lib/hints.ts
 export type Gender = "male" | "female";
 export type Gendered = { male: string; female: string };
 

@@ -5,7 +5,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { llm, model } from "./llm";
 import { loadPrompt } from "./prompts";
 import { getPhase, t, type Task } from "./tasks";
-import type { Motivation, Performance } from "./policy";
+import type { Motivation, Performance, Signals } from "./policy";
 import { DIAGNOSTIC_NOTES, DIFFICULTIES, SKILLS, TRANSVERSAL } from "./framework";
 
 export type Level = "strong" | "intermediate" | "significant_difficulty" | "insufficient_evidence";
@@ -28,6 +28,7 @@ export type Analysis = {
   student_pattern: Level; // overall pattern in the conversation so far
   performance: Performance | null; // 3-point scale for the tutor's policy (null = insufficient evidence)
   motivation: Motivation;
+  signals: Signals; // what the student asks for and how they responded to the last hint (hint guidelines)
   challenge: string | null;
   skills: string[];
   evidence: string;
@@ -114,6 +115,12 @@ STUDENT: ${message}`;
         level: { type: "string", enum: LEVELS },
         performance: { type: "string", enum: ["high", "partial", "low", "none"] },
         student_pattern: { type: "string", enum: LEVELS },
+        request_type: { type: "string", enum: ["none", "info", "check", "full_solution", "stop"] },
+        response_to_last_hint: { type: "string", enum: ["progressed", "partial", "same_difficulty", "no_previous_hint"] },
+        frustration_stated: { type: "boolean" },
+        basic_meaning_missing: { type: "boolean" },
+        ready_to_finish: { type: "boolean" },
+        choice_after_offer: { type: "string", enum: ["none", "finish", "continue", "unclear"] },
         motivation: { type: "string", enum: ["high", "low"] },
         skills: { type: "array", items: { type: "string", enum: skillIds } },
         challenge: { type: "string", enum: [...challengeIds, "none"] },
@@ -121,7 +128,7 @@ STUDENT: ${message}`;
         asks_for_answer: { type: "boolean" },
         phase_complete: { type: "boolean" },
       },
-      required: ["phases", "phase", "level", "performance", "student_pattern", "motivation", "skills", "challenge", "evidence", "asks_for_answer", "phase_complete"],
+      required: ["phases", "phase", "level", "performance", "student_pattern", "request_type", "response_to_last_hint", "frustration_stated", "basic_meaning_missing", "ready_to_finish", "choice_after_offer", "motivation", "skills", "challenge", "evidence", "asks_for_answer", "phase_complete"],
     },
   };
 
@@ -174,7 +181,17 @@ STUDENT: ${message}`;
     const skills = Array.isArray(a.skills) ? [...new Set(a.skills.map(String).filter((c) => skillIds.includes(c)))] : [];
     for (const p of phases) for (const c of p.skills) if (!skills.includes(c)) skills.push(c);
 
+    const pick = <T extends string>(v: unknown, opts: readonly T[], d: T): T => (opts.includes(v as T) ? (v as T) : d);
+    const signals: Signals = {
+      request_type: pick(a.request_type, ["none", "info", "check", "full_solution", "stop"] as const, "none"),
+      response_to_last_hint: pick(a.response_to_last_hint, ["progressed", "partial", "same_difficulty", "no_previous_hint"] as const, "no_previous_hint"),
+      frustration_stated: a.frustration_stated === true,
+      basic_meaning_missing: a.basic_meaning_missing === true,
+      ready_to_finish: a.ready_to_finish === true,
+      choice_after_offer: pick(a.choice_after_offer, ["none", "finish", "continue", "unclear"] as const, "none"),
+    };
     return {
+      signals,
       phase,
       phases,
       level,

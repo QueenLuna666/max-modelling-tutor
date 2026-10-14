@@ -4,11 +4,12 @@ import ExcelJS from "exceljs";
 import { DIFFICULTIES, SKILLS, TRANSVERSAL, PHASES, codeLabel } from "./framework";
 import type { ExportSession } from "./staffData";
 import { policyTable } from "./policy";
+import { HINT_CODE, HINT_HE as HINT_HE_LABELS } from "./hints";
 
 const LEVEL_HE: Record<string, string> = { strong: "חזק", intermediate: "ביניים", significant_difficulty: "קושי משמעותי", insufficient_evidence: "אין די ראיות" };
 const PERF: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
 const MOT: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
-const HINT: Record<string, string> = { none: "בלי רמז", light: "קל", medium: "בינוני", strong: "חזק" };
+const HINT: Record<string, string> = HINT_HE_LABELS;
 const SCAFFOLD: Record<string, string> = { in_step: "תמיכה בתוך שלב", transition: "מעבר בין שלבים", motivation: "הנעה" };
 const MOVE: Record<string, string> = {
   opening: "פתיחה",
@@ -86,9 +87,10 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       { header: "תדירות קשיים (סה״כ)", key: "diff", width: 10 },
       { header: "מגוון קשיים (קודים שונים)", key: "diffDiv", width: 10 },
       { header: "מגוון מיומנויות (קודים שונים)", key: "skillDiv", width: 11 },
-      { header: "רמזים קלים", key: "hL", width: 8 },
-      { header: "רמזים בינוניים", key: "hM", width: 8 },
-      { header: "רמזים חזקים", key: "hS", width: 8 },
+      { header: "רמזי H1", key: "hL", width: 7 },
+      { header: "רמזי H2", key: "hM", width: 7 },
+      { header: "רמזי H3", key: "hS", width: 7 },
+      { header: "ליווי H4", key: "h4", width: 7 },
     ],
     sessions.map((s) => ({
       class: s.classCode,
@@ -121,6 +123,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       hL: s.metrics.hints.light,
       hM: s.metrics.hints.medium,
       hS: s.metrics.hints.strong,
+      h4: s.metrics.hints.step,
     })),
     "שורה לכל תלמיד/ה. ביצוע ומוטיבציה = מספר ההודעות שתויגו כך. תדירות ומגוון קשיים לפי מסגרת המעבדה (Schwartz-Aviad & Kohen, 2026).",
   );
@@ -141,9 +144,10 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
       { header: "קודי קשיים", key: "diffCodes", width: 42, wrap: true },
       { header: "מגוון מיומנויות", key: "skillDiv", width: 9 },
       { header: "מיומנויות שהופגנו", key: "skills", width: 46, wrap: true },
-      { header: "רמזים קלים", key: "hL", width: 7 },
-      { header: "רמזים בינוניים", key: "hM", width: 7 },
-      { header: "רמזים חזקים", key: "hS", width: 7 },
+      { header: "רמזי H1", key: "hL", width: 7 },
+      { header: "רמזי H2", key: "hM", width: 7 },
+      { header: "רמזי H3", key: "hS", width: 7 },
+      { header: "ליווי H4", key: "h4", width: 7 },
       { header: "השלב הושלם", key: "done", width: 8 },
     ],
     sessions.flatMap((s) =>
@@ -162,6 +166,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
         hL: p.hints.light,
         hM: p.hints.medium,
         hS: p.hints.strong,
+        h4: p.hints.step,
         done: yesNo(p.completed),
       })),
     ),
@@ -183,7 +188,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
         { header: "מגוון קשיים (קודים שונים)", key: "diffDiv", width: 11 },
         { header: "קשיים לפי שכיחות (מספר תלמידים)", key: "diffCodes", width: 52, wrap: true },
         { header: "ממוצע דקות בשלב", key: "minutes", width: 9 },
-        { header: "רמזים חזקים (סה״כ)", key: "hS", width: 9 },
+        { header: "רמזי H3–H4 (סה״כ)", key: "hS", width: 9 },
       ],
       sessions[0].phases.map((ph, i) => {
         const rows = sessions.map((s) => s.metrics.perPhase[i]).filter(Boolean);
@@ -200,7 +205,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
           diffDiv: byCode.size,
           diffCodes: [...byCode].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${codeLabel(c)} (${n})`).join("; "),
           minutes: reached.length ? Math.round((reached.reduce((n, p) => n + p.minutes, 0) / reached.length) * 10) / 10 : 0,
-          hS: rows.reduce((n, p) => n + p.hints.strong, 0),
+          hS: rows.reduce((n, p) => n + p.hints.strong + p.hints.step, 0),
         };
       }),
       "שורה לכל שלב, על פני כל התלמידים בקובץ. תדירות ומגוון הקשיים בכל שלב, כמו במחקר על יכולת האבחון (Schwartz-Aviad & Kohen, 2026).",
@@ -312,27 +317,22 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
   );
 
   const pol = policyTable();
-  const PERF_HE: Record<string, string> = { high: "גבוה", partial: "חלקי", low: "נמוך" };
-  const MOT_HE: Record<string, string> = { high: "גבוהה", low: "נמוכה" };
-  const HINT_HE: Record<string, string> = { none: "בלי רמז", light: "קל", medium: "בינוני", strong: "חזק" };
   sheet(
     wb,
-    "טבלת שקלול",
+    "מדיניות רמזים",
     [
-      { header: "ביצוע", key: "perf", width: 12 },
-      { header: "מוטיבציה", key: "mot", width: 12 },
-      { header: "המהלך של MAX", key: "move", width: 22 },
-      { header: "הרמז החזק ביותר", key: "hint", width: 16 },
-      { header: "ההנחיה ל-MAX", key: "instruction", width: 70, wrap: true },
+      { header: "נושא", key: "topic", width: 22 },
+      { header: "מה MAX עושה", key: "what", width: 90, wrap: true },
     ],
     [
-      ...Object.entries(pol.table).flatMap(([perf, row]) =>
-        Object.entries(row).map(([mot, c]) => ({ perf: PERF_HE[perf] ?? perf, mot: MOT_HE[mot] ?? mot, move: c.move, hint: HINT_HE[c.max_hint] ?? c.max_hint, instruction: c.instruction })),
-      ),
-      { perf: "ביקש/ה תשובה", mot: "—", move: pol.asks_for_answer.move, hint: HINT_HE[pol.asks_for_answer.max_hint], instruction: pol.asks_for_answer.instruction },
-      ...pol.escalation_within_phase.map((r) => ({ perf: "הסלמה", mot: "", move: "", hint: "", instruction: r })),
+      ...Object.entries(pol.hint_scale).map(([k, v]) => ({ topic: `סולם: ${k}`, what: v })),
+      ...Object.entries(pol.start_by_level).map(([k, v]) => ({ topic: `פתיחה לפי רמה: ${LEVEL_HE[k] ?? k}`, what: v })),
+      ...pol.after_student_response.map((v, i) => ({ topic: `שינוי אחרי תגובה ${i + 1}`, what: v })),
+      ...Object.entries(pol.requests).map(([k, v]) => ({ topic: `בקשה: ${k}`, what: v })),
+      { topic: "סיום", what: pol.ending },
+      { topic: "הגדרת כיתה", what: pol.class_setting },
     ],
-    "כך הסוכן המאבחן והמדיניות מחליטים מה MAX עושה בכל הודעה: ביצוע × מוטיבציה → מהלך ורמז מרבי, עם הסלמה הדרגתית בתוך שלב.",
+    "לפי מסמך ״הנחיות לתגובות ולרמזים בסוכן המידול״ של צוות המחקר: התגובה נקבעת מחדש אחרי כל הודעה לפי הבקשה, רמת הביצוע בהיבט שנדון, והרמז הקודם ותגובת התלמיד/ה אליו. סולם H0–H4.",
   );
 
   return Buffer.from(await wb.xlsx.writeBuffer());
@@ -358,7 +358,8 @@ export function toJson(sessions: ExportSession[]) {
       lang: "language of the conversation (he | ar | en)",
       skills: "skill codes the message gives evidence of",
       phase_complete: "the message completes the phase MAX was guiding",
-      max_response: "what MAX did next, decided by the policy table",
+      signals: "request_type (none|info|check|full_solution|stop), response_to_last_hint (progressed|partial|same_difficulty|no_previous_hint), frustration_stated, basic_meaning_missing, ready_to_finish, choice_after_offer — research team's hint guidelines",
+      max_response: "what MAX did next: hint level H0–H4, move, and the text — decided by the hint guidelines (see policy)",
     },
     policy: policyTable(),
     codebook: {
@@ -390,6 +391,7 @@ export function toJson(sessions: ExportSession[]) {
           level: a?.level ?? null,
           student_pattern: a?.student_pattern ?? null,
           phases: (a?.phases ?? []).map((p) => ({ ...p, label: phaseName(s, p.phase) })),
+          signals: a?.signals ?? null,
           // — the lab's framework —
           phase_label: phaseName(s, a ? a.phase : m.phase),
           challenge_label: a?.challenge ? codeLabel(a.challenge) : null,
@@ -401,7 +403,7 @@ export function toJson(sessions: ExportSession[]) {
           response_seconds: m.response_ms == null ? null : Math.round(m.response_ms / 1000),
           // — what MAX did with it —
           max_response: reply
-            ? { guided_phase: reply.phase, hint_level: reply.hint_level, move: reply.move, scaffold_type: reply.scaffold_type, text: reply.content }
+            ? { guided_phase: reply.phase, hint_level: reply.hint_level ? (HINT_CODE[reply.hint_level] ?? reply.hint_level) : null, move: reply.move, scaffold_type: reply.scaffold_type, text: reply.content }
             : null,
           coded: Boolean(a),
         });

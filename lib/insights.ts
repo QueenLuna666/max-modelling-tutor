@@ -22,6 +22,7 @@ export type AnnotationRow = {
   challenge: string | null;
   skills?: string[] | null;
   level?: string | null; // research team's level in the main phase
+  signals?: Record<string, unknown> | null; // request type, response to last hint, frustration, finishing (hint guidelines)
   student_pattern?: string | null; // overall pattern so far
   phases?: { phase: string; level: string; aspect: string; skills: string[]; evidence: string; after_support: boolean }[] | null;
   evidence: string | null;
@@ -150,9 +151,9 @@ export function sessionAlerts(
   return alerts;
 }
 
-// Strongest hint MAX gave in each phase (none < light < medium < strong).
+// Strongest hint MAX gave in each phase (H0 < H1 < H2 < H3 < H4).
 export function strongestHints(messages: MessageRow[]): Record<string, string> {
-  const order = ["none", "light", "medium", "strong"];
+  const order = ["none", "light", "medium", "strong", "step"];
   const out: Record<string, string> = {};
   for (const m of messages) {
     if (m.role !== "tutor" || !m.phase || !m.hint_level) continue;

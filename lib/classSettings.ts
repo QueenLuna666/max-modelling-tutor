@@ -10,7 +10,7 @@ export const FEATURES = {
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
-export type HintCap = "light" | "medium" | "strong";
+export type HintCap = "light" | "medium" | "strong" | "step"; // H1–H4
 
 export type ClassSettings = {
   tasks: string[] | null; // null = every published task
@@ -28,7 +28,7 @@ export function normalizeSettings(raw: unknown): ClassSettings {
   return {
     tasks: Array.isArray(r.tasks) ? r.tasks.map(String) : null,
     features,
-    maxHint: r.maxHint === "light" || r.maxHint === "medium" ? r.maxHint : "strong",
+    maxHint: r.maxHint === "light" || r.maxHint === "medium" || r.maxHint === "strong" ? r.maxHint : "step",
   };
 }
 

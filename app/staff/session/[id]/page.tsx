@@ -5,7 +5,9 @@ import { useParams } from "next/navigation";
 import { StaffShell, useStaffData } from "@/components/StaffShell";
 import { JourneyChart } from "@/components/JourneyChart";
 import { MiniMarkdown } from "@/components/MiniMarkdown";
+import { MessageText } from "@/components/MessageText";
 import { useStaffLang } from "@/lib/staffLang";
+import { HINT_AR, HINT_HE } from "@/lib/hints";
 
 type Analysis = {
   performance: string | null;
@@ -58,7 +60,7 @@ type Detail = {
     difficultyDiversity?: number;
     skillDiversity?: number;
     backMoves: number;
-    hints: { light: number; medium: number; strong: number };
+    hints: { light: number; medium: number; strong: number; step?: number };
     perPhase: {
       phase: string;
       visits: number;
@@ -84,12 +86,7 @@ const LEVEL: Record<string, Pair> = {
   insufficient_evidence: ["אין די ראיות", "لا أدلة كافية"],
 };
 const MOT: Record<string, Pair> = { high: ["גבוהה", "عالية"], low: ["נמוכה", "منخفضة"] };
-const HINT: Record<string, Pair> = {
-  none: ["בלי רמז", "بدون تلميح"],
-  light: ["רמז קל", "تلميح خفيف"],
-  medium: ["רמז בינוני", "تلميح متوسط"],
-  strong: ["רמז חזק", "تلميح قوي"],
-};
+const HINT: Record<string, Pair> = Object.fromEntries(Object.keys(HINT_HE).map((k) => [k, [HINT_HE[k], HINT_AR[k]]]));
 const SCAFFOLD: Record<string, Pair> = {
   in_step: ["תמיכה בתוך שלב", "دعم داخل المرحلة"],
   transition: ["מעבר בין שלבים", "انتقال بين المراحل"],
@@ -183,7 +180,7 @@ function SessionView({ d }: { d: Detail }) {
               ]
             : [
                 [L("חזרות לשלב קודם", "عودات لمرحلة سابقة"), d.metrics.backMoves],
-                [L("רמזים חזקים", "تلميحات قوية"), d.metrics.hints.strong],
+                [L("רמזי H3–H4", "تلميحات H3–H4"), d.metrics.hints.strong + (d.metrics.hints.step ?? 0)],
               ]),
         ].map(([k, v]) => (
           <div key={String(k)} className="rounded-xl border border-line bg-surface px-3 py-2">
@@ -301,7 +298,9 @@ function SessionView({ d }: { d: Detail }) {
                     </span>
                   )}
                 </div>
-                <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                <div className="leading-relaxed">
+                  <MessageText text={m.content} />
+                </div>
 
                 {d.researcher && showAnalysis && mine && (
                   <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">

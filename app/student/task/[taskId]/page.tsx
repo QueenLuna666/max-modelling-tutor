@@ -9,6 +9,7 @@ import { TaskCard } from "@/components/TaskCard";
 import { SpeakButton, useDictation, useSpeech, useTextPrefs } from "@/components/Accessibility";
 import { MaxMascot } from "@/components/MaxMascot";
 import { BackButton } from "@/components/BackButton";
+import { MessageText } from "@/components/MessageText";
 
 type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean };
 
@@ -368,7 +369,7 @@ function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string;
     <div className={`flex items-end gap-2 ${mine ? "justify-start" : "flex-row-reverse justify-start"}`}>
       {!mine && <MaxMascot size={34} className="mb-1 shrink-0" />}
       <div
-        className={`max-w-[85%] rounded-3xl px-4 py-2.5 leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[85%] rounded-3xl px-4 py-2.5 leading-relaxed ${
           mine ? "rounded-ss-md bg-accent text-white" : "rounded-se-md border-2 border-accent/25 bg-surface text-ink"
         } ${pending ? "animate-pulse text-muted" : ""}`}
       >
@@ -376,7 +377,7 @@ function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string;
           {mine ? youLabel : "MAX"}
           {speak && <SpeakButton small active={speak.active} onClick={speak.toggle} label={speak.label} stopLabel={speak.stopLabel} />}
         </span>
-        {msg.content}
+        <MessageText text={msg.content} />
       </div>
     </div>
   );

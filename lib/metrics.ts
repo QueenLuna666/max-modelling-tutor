@@ -11,7 +11,7 @@ export type PhaseMetrics = {
   difficulties: number; // frequency: messages coded with a difficulty in this phase
   difficultyCodes: string[]; // distinct codes (diversity = length)
   skillCodes: string[]; // distinct skills shown
-  hints: { light: number; medium: number; strong: number };
+  hints: { light: number; medium: number; strong: number; step: number };
   completed: boolean; // analyzer marked the guided phase complete
 };
 
@@ -30,7 +30,7 @@ export type SessionMetrics = {
   backMoves: number;
   furthestPhase: string | null;
   phasesCompleted: number;
-  hints: { light: number; medium: number; strong: number };
+  hints: { light: number; medium: number; strong: number; step: number };
   strongestHint: string;
   perPhase: PhaseMetrics[];
 };
@@ -54,7 +54,7 @@ export function sessionMetrics(phaseIds: string[], messages: MessageRow[], annot
         difficulties: 0,
         difficultyCodes: [],
         skillCodes: [],
-        hints: { light: 0, medium: 0, strong: 0 },
+        hints: { light: 0, medium: 0, strong: 0, step: 0 },
         completed: false,
       },
     ]),
@@ -90,7 +90,7 @@ export function sessionMetrics(phaseIds: string[], messages: MessageRow[], annot
   }
   for (const m of tutor) {
     const pm = perPhase.get(m.phase ?? "");
-    if (pm && (m.hint_level === "light" || m.hint_level === "medium" || m.hint_level === "strong")) pm.hints[m.hint_level] += 1;
+    if (pm && (m.hint_level === "light" || m.hint_level === "medium" || m.hint_level === "strong" || m.hint_level === "step")) pm.hints[m.hint_level] += 1;
   }
 
   const words = student.map((m) => m.word_count ?? 0);
@@ -99,11 +99,12 @@ export function sessionMetrics(phaseIds: string[], messages: MessageRow[], annot
   for (const a of annotations) if (a.performance) perf[a.performance] += 1;
   const allDiff = new Set(annotations.map((a) => a.challenge).filter(Boolean));
   const allSkills = new Set(annotations.flatMap((a) => a.skills ?? []));
-  const hints = { light: 0, medium: 0, strong: 0 };
+  const hints = { light: 0, medium: 0, strong: 0, step: 0 };
   for (const pm of perPhase.values()) {
     hints.light += pm.hints.light;
     hints.medium += pm.hints.medium;
     hints.strong += pm.hints.strong;
+    hints.step += pm.hints.step;
   }
   const first = messages[0] ? new Date(messages[0].created_at).getTime() : 0;
 
@@ -124,7 +125,7 @@ export function sessionMetrics(phaseIds: string[], messages: MessageRow[], annot
     furthestPhase: journey.furthestIndex >= 0 ? phaseIds[journey.furthestIndex] : null,
     phasesCompleted: list.filter((p) => p.completed).length,
     hints,
-    strongestHint: hints.strong ? "strong" : hints.medium ? "medium" : hints.light ? "light" : "none",
+    strongestHint: hints.step ? "step" : hints.strong ? "strong" : hints.medium ? "medium" : hints.light ? "light" : "none",
     perPhase: list,
   };
 }

@@ -2,6 +2,7 @@
 
 Source: three documents written by the research team for the chatbot (14.10.2026):
 "כללים לזיהוי שלבי מידול מתוך שיחת תלמיד", "זיהוי רמת ביצוע בכל שלב מידול", "קריטריונים לזיהוי רמת ההבנה ודפוס בקשת תשובה".
+A fourth document, "הנחיות לתגובות ולרמזים בסוכן המידול" (HINT_GUIDELINES_REPORT), defines how MAX chooses its response and hint level (H0–H4); it is applied in prompts/max_base.md and lib/policy.ts.
 They are based on the lab document "הגדרות ומיומנויות של כל שלב מידול" (skill codes U/S/M/W/I/V, difficulty codes D-…, cross-cutting skills X-).
 The full original texts are in docs/instructions/. This file is a faithful operational summary for the agents.
 

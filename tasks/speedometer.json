@@ -18,7 +18,7 @@
     "The wheel's outer diameter lets you compute its circumference, which is the distance the wheel travels in one rotation.",
     "The number of teeth counted in one minute lets the speedometer compute how many rotations the wheel made.",
     "NOT GIVEN in the task: how many teeth the gear has, and the wheel's diameter. The student must notice this (skill U4) and make reasonable, justified assumptions (S4, S5). There is no single correct answer.",
-    "Real-world knowledge (extra-mathematical knowledge) — share only as a strong hint, after the student has tried: such gears usually have 48 teeth; a car wheel's outer diameter is about 58 cm (private car) to 80 cm (truck)."
+    "Real-world reference data (research team's hint guidelines): give it directly ONLY if the student explicitly asks for it or shows real difficulty finding it — as reference data with its context, not as a measurement of this car: such gears often have about 48 teeth (a typical value, not universal); a car wheel's outer diameter (tyre, not rim) is roughly 58–70 cm for private cars and up to about 80 cm for trucks. Choosing and justifying the values stays with the student."
   ],
   "givens": {
     "teeth_counted_per_minute": 38400

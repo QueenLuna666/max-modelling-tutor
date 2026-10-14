@@ -40,6 +40,7 @@ const HINT_CELL: Record<string, string> = {
   light: "bg-ok-soft text-ok",
   medium: "bg-warn-soft text-warn",
   strong: "bg-warn text-white",
+  step: "bg-warn text-white ring-2 ring-warn/40",
 };
 
 const fmtTime = (iso: string, locale: string) => new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
@@ -259,9 +260,9 @@ function ClassView({ d, researcher, reload }: { d: Dashboard; researcher: boolea
         )}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           <span>{L("המספר = הודעות של התלמיד/ה בשלב", "الرقم = رسائل الطالب/ة في المرحلة")}</span>
-          <LegendSwatch cls="bg-ok-soft" text={L("הסתדר/ה עם רמז קל או בלי", "تدبّر/ت بتلميح خفيف أو بدونه")} />
-          <LegendSwatch cls="bg-warn-soft" text={L("קיבל/ה רמז בינוני", "تلقّى/ت تلميحًا متوسطًا")} />
-          <LegendSwatch cls="bg-warn" text={L("קיבל/ה רמז חזק", "تلقّى/ت تلميحًا قويًا")} />
+          <LegendSwatch cls="bg-ok-soft" text={L("הסתדר/ה עם H0–H1", "تدبّر/ت مع H0–H1")} />
+          <LegendSwatch cls="bg-warn-soft" text={L("קיבל/ה רמז ממוקד (H2)", "تلقّى/ت تلميحًا مركّزًا (H2)")} />
+          <LegendSwatch cls="bg-warn" text={L("קיבל/ה מבנה חלקי או ליווי (H3–H4)", "تلقّى/ت بنية جزئية أو مرافقة (H3–H4)")} />
           <span>{L("↺ = חזר/ה לשלב · מסגרת = השלב הנוכחי", "↺ = عاد/ت إلى المرحلة · الإطار = المرحلة الحالية")}</span>
         </div>
       </section>
@@ -367,9 +368,10 @@ function SettingsForm({ classId, initial, onSaved }: { classId: string; initial:
           onChange={(e) => setSettings({ ...settings, maxHint: e.target.value as ClassSettings["maxHint"] })}
           className="rounded-lg border border-line bg-paper px-3 py-1.5"
         >
-          <option value="strong">{L("חזק (ברירת מחדל): נותן מבנה, אף פעם לא את התשובה", "قوي (افتراضي): يعطي البنية، وليس الإجابة أبدًا")}</option>
-          <option value="medium">{L("בינוני: מכוון לרעיון בלי לתת מבנה", "متوسط: يوجّه إلى الفكرة دون إعطاء البنية")}</option>
-          <option value="light">{L("קל בלבד: רק שאלות מכוונות", "خفيف فقط: أسئلة موجِّهة فقط")}</option>
+          <option value="step">{L("H4 ליווי צעד קטן (ברירת מחדל): דוגמה אחרת או בחירה מוגבלת, אף פעם לא הפתרון", "H4 مرافقة خطوة صغيرة (افتراضي): مثال آخر أو اختيار محدود، وليس الحل أبدًا")}</option>
+          <option value="strong">{L("H3 מבנה חלקי: קשר מקומי או מסגרת להשלמה", "H3 بنية جزئية: علاقة موضعية أو إطار للإكمال")}</option>
+          <option value="medium">{L("H2 רמז ממוקד: מצמצם את אזור החיפוש", "H2 تلميح مركّز: يضيّق مجال البحث")}</option>
+          <option value="light">{L("H1 רמז קל בלבד: שאלות מכוונות", "H1 تلميح خفيف فقط: أسئلة موجِّهة")}</option>
         </select>
       </section>
 

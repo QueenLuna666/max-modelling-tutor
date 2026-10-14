@@ -3,7 +3,7 @@
 // Body: { sessionId: string, content: string, responseMs?: number }
 // Response: text/plain stream. Header X-Phase = the step MAX is guiding after this turn.
 import { supabaseAdmin } from "@/lib/supabase";
-import { nextPhaseId, type Gender, type Lang } from "@/lib/tasks";
+import { nextPhaseId, type Gender, type HintLevel, type Lang } from "@/lib/tasks";
 import { getTask } from "@/lib/taskStore";
 import { buildSystemPrompt, loadBasePrompt } from "@/lib/buildPrompt";
 import { planResponse, type Plan } from "@/lib/policy";
@@ -101,39 +101,52 @@ export async function POST(req: Request) {
     responseMs,
   });
   if (analysis) {
-    const row = { message_id: saved.id, session_id: session.id, ...analysis, lang: session.lang };
-    let { error: annErr } = await db.from("annotations").insert(row);
-    if (annErr) {
-      // Database not migrated yet (no level / student_pattern / phases columns): save the rest.
-      console.warn("Saving annotation without the new columns:", annErr.message);
-      const { phases: _p, level: _l, student_pattern: _s, ...rest } = row;
-      void [_p, _l, _s];
-      ({ error: annErr } = await db.from("annotations").insert(rest));
-      if (annErr) {
-        const { skills: _skills, ...older } = rest;
-        void _skills;
-        await db.from("annotations").insert(older);
-      }
+    // Save the coding. If the database was not migrated yet, drop the newest columns and try again
+    // (005: signals → 004: phases, level, student_pattern → 002: skills).
+    const full: Record<string, unknown> = { message_id: saved.id, session_id: session.id, ...analysis, lang: session.lang };
+    const steps = [[], ["signals"], ["signals", "phases", "level", "student_pattern"], ["signals", "phases", "level", "student_pattern", "skills"]];
+    for (const drop of steps) {
+      const row = Object.fromEntries(Object.entries(full).filter(([k]) => !drop.includes(k)));
+      const { error } = await db.from("annotations").insert(row);
+      if (!error) break;
+      console.warn(`Saving annotation without [${drop.join(", ")}] failed:`, error.message);
     }
   }
 
-  // 3. Decide the response plan and whether MAX moves to the next step.
+  // 3. Decide the response plan (research team's hint guidelines). No gates between phases:
+  //    MAX follows the phase the student is actually working in; a completed guided phase moves on.
+  const { data: lastTutor } = await db
+    .from("messages")
+    .select("move, hint_level, phase")
+    .eq("session_id", session.id)
+    .eq("role", "tutor")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   let phaseId: string = session.current_phase;
   let phaseAttempts: number = session.phase_attempts + 1;
   let plan: Plan | null = null;
 
   if (analysis) {
-    // "Insufficient evidence" in this message → fall back on the student's overall pattern.
-    const fromPattern = { strong: "high", intermediate: "partial", significant_difficulty: "low", insufficient_evidence: "partial" } as const;
+    const focus = analysis.phase ?? session.current_phase;
+    const sameFocus = focus === (lastTutor?.phase ?? session.current_phase);
+    // The level in the aspect discussed now; with no evidence in this message, the student's overall pattern.
+    const level = analysis.level !== "insufficient_evidence" ? analysis.level : analysis.student_pattern;
+    const prevHint = sameFocus && lastTutor?.hint_level && lastTutor.hint_level !== "none" ? (lastTutor.hint_level as HintLevel) : null;
     plan = planResponse({
-      performance: analysis.performance ?? fromPattern[analysis.student_pattern],
-      motivation: analysis.motivation,
+      level,
+      signals: analysis.signals,
       asksForAnswer: analysis.asks_for_answer,
-      phaseComplete: analysis.phase_complete,
-      phaseAttempts,
+      previousHint: prevHint,
+      previousMove: lastTutor?.move ?? null,
+      noPhase: !analysis.phase,
       maxHint: settings.maxHint,
     });
-    if (analysis.phase_complete) {
+    if (analysis.phase && analysis.phase !== phaseId) {
+      phaseId = analysis.phase; // follow the student (non-linear)
+      phaseAttempts = 1;
+    } else if (analysis.phase_complete) {
       const next = nextPhaseId(task, phaseId);
       if (next) {
         phaseId = next;
