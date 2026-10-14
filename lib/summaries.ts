@@ -4,6 +4,7 @@ import "server-only";
 import { llm, model } from "./llm";
 import { loadPrompt } from "./prompts";
 import { codeLabel } from "./framework";
+import { logUsage } from "./limits";
 
 type Msg = {
   role: string;
@@ -57,6 +58,7 @@ async function write(prompt: string, lang: SummaryLang = "he", audience: Audienc
     { model: await model("tutor"), max_tokens: 3000, system: await loadPrompt("summary"), messages: [{ role: "user", content: prompt }] },
     { timeout: 90_000 },
   );
+  void logUsage("summary", res.model, res.usage);
   return res.content
     .map((b) => (b.type === "text" ? b.text : ""))
     .join("")

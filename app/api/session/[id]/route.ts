@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const { data: messages } = await db
     .from("messages")
-    .select("role, content")
+    .select("role, content, move")
     .eq("session_id", id)
     .order("created_at", { ascending: true });
 

@@ -75,6 +75,7 @@ export function buildJourney(
 
   for (const m of messages) {
     if (m.role !== "student") continue;
+    if (m.phase === "extension") continue; // the optional challenge after finishing is not part of the journey
     const a = byMsg.get(m.id);
     const phase = a?.phase ?? m.phase;
     if (!phase) continue;

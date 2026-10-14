@@ -8,6 +8,7 @@ import { builtInTasks, t } from "@/lib/tasks";
 import { listRows, saveRow, uploadImage } from "@/lib/taskStore";
 import { normalizeTask, readImage, runTaskAuthor, type AuthorImage } from "@/lib/taskAuthor";
 import { ndjsonStream, progressSender } from "@/lib/ndjson";
+import { getLimits, logUsage, usedToday } from "@/lib/limits";
 
 export const maxDuration = 300;
 
@@ -49,18 +50,24 @@ export async function POST(req: Request) {
   const description = body.description?.trim().slice(0, 2000) ?? "";
   if (!image && !description) return Response.json({ error: "צריך תמונה או תיאור" }, { status: 400 });
 
+  const limits = await getLimits();
+  if ((await usedToday(["studio"])) >= limits.dailyStudioBuilds) {
+    return Response.json({ error: `הגעתם למגבלה היומית של סוכן המשימות (${limits.dailyStudioBuilds}). אפשר לשנות אותה בדף ״שימוש ותקציב״.` }, { status: 429 });
+  }
+
   return ndjsonStream(async (send) => {
     const id = `t-${randomBytes(3).toString("hex")}`;
     send({ stage: "upload" });
     const imageUrl = image ? await uploadImage(image.data, image.mediaType, id) : null;
     send({ stage: "write" });
-    const { raw, note } = await runTaskAuthor({
+    const { raw, note, usage, model: usedModel } = await runTaskAuthor({
       image,
       description,
       grade: body.grade,
       noteLang: body.lang === "ar" ? "ar" : "he",
       onProgress: progressSender(send),
     });
+    void logUsage("studio", usedModel, usage, { staffId: staff.id });
     const now = new Date().toISOString();
     await saveRow({
       id,

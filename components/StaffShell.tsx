@@ -97,6 +97,16 @@ export function StaffShell({
                 {L("כיתות", "الصفوف")}
               </Link>
               {isResearcherRole(me.role) && (
+                <Link href="/staff/research" className="rounded-lg px-2 py-1 hover:bg-paper">
+                  🔬 {L("עוזר מחקר", "مساعد البحث")}
+                </Link>
+              )}
+              {isResearcherRole(me.role) && (
+                <Link href="/staff/usage" className="rounded-lg px-2 py-1 hover:bg-paper">
+                  {L("שימוש", "الاستخدام")}
+                </Link>
+              )}
+              {isResearcherRole(me.role) && (
                 <Link href="/staff/studio" className="rounded-lg bg-accent-soft px-2.5 py-1 font-medium text-accent-strong hover:bg-accent/15">
                   ✨ {L("סטודיו משימות", "استوديو المهام")}
                 </Link>

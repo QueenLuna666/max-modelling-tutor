@@ -6,6 +6,7 @@ import { builtInTasks } from "@/lib/tasks";
 import { getRow, saveRow, uploadImage, type StudioTurn } from "@/lib/taskStore";
 import { normalizeTask, readImage, runTaskAuthor, type AuthorImage } from "@/lib/taskAuthor";
 import { ndjsonStream, progressSender } from "@/lib/ndjson";
+import { getLimits, logUsage, usedToday } from "@/lib/limits";
 
 export const maxDuration = 300;
 
@@ -29,6 +30,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const current = row?.data ?? builtIn;
   if (!current) return Response.json({ error: "המשימה לא נמצאה" }, { status: 404 });
 
+  const limits = await getLimits();
+  if ((await usedToday(["studio"])) >= limits.dailyStudioBuilds) {
+    return Response.json({ error: `הגעתם למגבלה היומית של סוכן המשימות (${limits.dailyStudioBuilds}). אפשר לשנות אותה בדף ״שימוש ותקציב״.` }, { status: 429 });
+  }
+
   return ndjsonStream(async (send) => {
     const history = row?.source?.chat ?? [];
     let imageUrl = current.card?.image ?? null;
@@ -37,7 +43,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       imageUrl = await uploadImage(image.data, image.mediaType, id);
     }
     send({ stage: "write" });
-    const { raw, note } = await runTaskAuthor({
+    const { raw, note, usage, model: usedModel } = await runTaskAuthor({
       current,
       history,
       instruction,
@@ -45,6 +51,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       noteLang: body.lang === "ar" ? "ar" : "he",
       onProgress: progressSender(send),
     });
+    void logUsage("studio", usedModel, usage, { staffId: staff.id });
     const data = normalizeTask(raw, id, imageUrl);
     if (builtIn) data.image = builtIn.image; // keep the original scanned card for the built-in task
     const now = new Date().toISOString();

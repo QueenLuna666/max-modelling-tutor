@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { openingFor, publicTask, type Gender, type Lang } from "@/lib/tasks";
 import { getTask } from "@/lib/taskStore";
+import { getLimits } from "@/lib/limits";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,28 @@ export async function POST(req: Request) {
   const { data: matches } = await db.from("classes").select("id, code").in("code", variants);
   const cls = matches?.find((c) => c.code === classCode) ?? matches?.[0] ?? null;
   if (!cls) return NextResponse.json({ error: "קוד הכיתה לא נמצא" }, { status: 404 });
+
+  // Budget limits: number of students in the system, conversations per student per task.
+  const limits = await getLimits();
+  const ar = lang === "ar";
+  const { data: existing } = await db.from("students").select("id").eq("class_id", cls.id).eq("nickname", nickname).maybeSingle();
+  if (!existing) {
+    const { count } = await db.from("students").select("id", { count: "exact", head: true });
+    if ((count ?? 0) >= limits.maxStudents) {
+      return NextResponse.json(
+        { error: ar ? "وصل الموقع إلى الحد الأقصى من الطلاب في التجربة الحالية. أخبر/ي المعلّم/ة." : "האתר הגיע למספר התלמידים המרבי בניסוי הנוכחי. ספר/י למורה." },
+        { status: 403 },
+      );
+    }
+  } else {
+    const { count } = await db.from("sessions").select("id", { count: "exact", head: true }).eq("student_id", existing.id).eq("task_id", task.id);
+    if ((count ?? 0) >= limits.maxSessionsPerTask) {
+      return NextResponse.json(
+        { error: ar ? `بدأت هذه المهمة ${limits.maxSessionsPerTask} مرات بالفعل. أخبر/ي المعلّم/ة.` : `כבר התחלת את המשימה הזו ${limits.maxSessionsPerTask} פעמים. ספר/י למורה.` },
+        { status: 429 },
+      );
+    }
+  }
 
   const { data: student, error: stuErr } = await db
     .from("students")

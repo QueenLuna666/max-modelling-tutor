@@ -155,7 +155,7 @@ export async function runTaskAuthor(opts: {
   instruction?: string;
   noteLang?: "he" | "ar"; // language of the agent's note to the researcher
   onProgress?: (chars: number) => void;
-}): Promise<{ raw: Record<string, unknown>; note: string }> {
+}): Promise<{ raw: Record<string, unknown>; note: string; usage: Record<string, number | null>; model: string }> {
   const parts: Anthropic.ContentBlockParam[] = [];
   if (opts.image) {
     parts.push({ type: "image", source: { type: "base64", media_type: opts.image.mediaType, data: opts.image.data } });
@@ -212,5 +212,5 @@ export async function runTaskAuthor(opts: {
   if (final.stop_reason === "max_tokens") throw new Error("The task was too long and got cut off. Try again.");
   const input = block.input as { note_to_author?: string; task?: Record<string, unknown> };
   if (!input.task) throw new Error("The task agent returned an empty task. Try again.");
-  return { raw: input.task, note: input.note_to_author ?? "" };
+  return { raw: input.task, note: input.note_to_author ?? "", usage: final.usage as unknown as Record<string, number | null>, model: tutorModel };
 }

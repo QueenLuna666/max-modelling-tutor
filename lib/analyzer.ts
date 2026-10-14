@@ -44,7 +44,7 @@ export async function analyzeMessage(opts: {
   message: string;
   wordCount: number;
   responseMs: number | null;
-}): Promise<(Analysis & { model: string }) | null> {
+}): Promise<(Analysis & { model: string; usage?: Record<string, number | null> }) | null> {
   const { task, guidedPhaseId, recent, message, wordCount, responseMs } = opts;
   const phaseIds = task.phases.map((p) => p.id);
   const challengeIds = DIFFICULTIES.map((d) => d.code);
@@ -204,6 +204,7 @@ STUDENT: ${message}`;
       asks_for_answer: a.asks_for_answer === true,
       phase_complete: a.phase_complete === true,
       model: analyzerModel,
+      usage: res.usage as unknown as Record<string, number | null>,
     };
   } catch (err) {
     console.error("Analyzer failed", err);

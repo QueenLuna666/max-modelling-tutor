@@ -72,7 +72,7 @@ export function sessionMetrics(phaseIds: string[], messages: MessageRow[], annot
 
   for (const m of student) {
     const a = byMsg.get(m.id);
-    if (!a) continue;
+    if (!a || m.phase === "extension") continue;
     const pm = perPhase.get(a.phase ?? m.phase ?? "");
     if (!pm) continue;
     if (a.challenge) {

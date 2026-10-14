@@ -51,7 +51,7 @@ ${task.context_for_tutor?.length ? `\n# Background for you (use it to guide, nev
 # Modelling steps for this task
 ${phaseList}
 
-# Current step: ${t(phase.label, "en")} (${phase.id})
+${phaseId === "extension" ? extensionBlock(task) : `# Current step: ${t(phase.label, "en")} (${phase.id})
 ${frameworkBlock(phase.id)}
 In this task, the goal of this step: ${phase.goal}
 Evidence that the step is done:
@@ -61,7 +61,7 @@ ${phase.misconceptions.map((m) => `- ${m}`).join("\n")}
 The student has sent ${phaseAttempts} message(s) in this step.
 When the step is done, you may use this compliment: "${phase.compliment}"
 
-${hintBlock}
+${hintBlock}`}
 
 ${planBlock}
 
@@ -117,4 +117,14 @@ ${seen}
 Overall pattern so far: ${LEVEL_EN[a.student_pattern]}.${a.asks_for_answer ? "\nThe student explicitly asked you to replace their work with a ready answer: refuse kindly and invite them back in with one small step — whatever their level." : ""}
 Use the level in the aspect being discussed now, not a general label of the student; the Response plan below already applies the research team's hint guidelines. Never tell the student their level or pattern.
 `;
+}
+
+// After the task is finished and validated, a student who chose "challenge me" works on an extension.
+function extensionBlock(task: Task): string {
+  const ext = typeof task.reference.extension === "string" ? task.reference.extension : "";
+  return `# Extension challenge (the task itself is finished)
+The student answered the task, validated the result, and chose to continue with a challenge. This is optional and not part of the original task.
+- Pose or continue ONE challenge related to the task and to what this student did: change an assumption, check another situation, or reverse the question.${ext ? `\n- An idea from the task author: ${ext}` : ""}
+- Guide it with the same principles: the smallest support (H0–H4), one question at a time, never the final answer.
+- When the challenge is answered and checked, offer again: finish here, or one more challenge.`;
 }

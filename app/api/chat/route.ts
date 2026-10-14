@@ -11,6 +11,7 @@ import { analyzeMessage } from "@/lib/analyzer";
 import { llm, model } from "@/lib/llm";
 import { normalizeSettings } from "@/lib/classSettings";
 import { withoutDrawings } from "@/lib/messageFormat";
+import { getLimits, logUsage } from "@/lib/limits";
 
 export const maxDuration = 60;
 
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
   const sessionId = body.sessionId;
   const content = body.content?.trim();
   if (!sessionId || !content) return Response.json({ error: "Missing sessionId or content" }, { status: 400 });
-  if (content.length > 4000) return Response.json({ error: "ההודעה ארוכה מדי" }, { status: 400 });
 
   const db = supabaseAdmin();
 
@@ -52,6 +52,33 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (!session) return Response.json({ error: "Session not found" }, { status: 404 });
   if (session.status !== "active") return Response.json({ error: "המשימה כבר הסתיימה" }, { status: 409 });
+  const ar = session.lang === "ar";
+
+  // Budget limits (adjustable on the Usage page).
+  const limits = await getLimits();
+  if (content.length > limits.maxMessageChars) {
+    return Response.json({ error: ar ? `الرسالة طويلة جدًا (حتى ${limits.maxMessageChars} حرف).` : `ההודעה ארוכה מדי (עד ${limits.maxMessageChars} תווים).` }, { status: 400 });
+  }
+  {
+    const { count } = await db.from("messages").select("id", { count: "exact", head: true }).eq("session_id", session.id).eq("role", "student");
+    if ((count ?? 0) >= limits.maxMessagesPerSession) {
+      return Response.json(
+        { error: ar ? "وصلنا إلى الحد الأقصى من الرسائل في هذه المحادثة. أخبر/ي المعلّم/ة." : "הגענו למספר ההודעות המרבי בשיחה הזו. ספר/י למורה." },
+        { status: 429 },
+      );
+    }
+    const { data: lastStudent } = await db
+      .from("messages")
+      .select("created_at")
+      .eq("session_id", session.id)
+      .eq("role", "student")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastStudent && Date.now() - new Date(lastStudent.created_at).getTime() < limits.cooldownSeconds * 1000) {
+      return Response.json({ error: ar ? "لحظة… أرسل/ي مرة أخرى بعد ثوانٍ." : "רגע… שלח/י שוב בעוד כמה שניות." }, { status: 429 });
+    }
+  }
 
   const task = await getTask(session.task_id);
   if (!task) return Response.json({ error: "Task not found" }, { status: 404 });
@@ -102,10 +129,13 @@ export async function POST(req: Request) {
     wordCount,
     responseMs,
   });
+  if (analysis) void logUsage("analyzer", analysis.model, analysis.usage, { sessionId: session.id });
   if (analysis) {
     // Save the coding. If the database was not migrated yet, drop the newest columns and try again
     // (005: signals → 004: phases, level, student_pattern → 002: skills).
-    const full: Record<string, unknown> = { message_id: saved.id, session_id: session.id, ...analysis, lang: session.lang };
+    const { usage: _usage, ...coding } = analysis;
+    void _usage;
+    const full: Record<string, unknown> = { message_id: saved.id, session_id: session.id, ...coding, lang: session.lang };
     const steps = [[], ["signals"], ["signals", "phases", "level", "student_pattern"], ["signals", "phases", "level", "student_pattern", "skills"]];
     for (const drop of steps) {
       const row = Object.fromEntries(Object.entries(full).filter(([k]) => !drop.includes(k)));
@@ -145,7 +175,9 @@ export async function POST(req: Request) {
       noPhase: !analysis.phase,
       maxHint: settings.maxHint,
     });
-    if (analysis.phase && analysis.phase !== phaseId) {
+    if (plan.move === "extension" || phaseId === "extension") {
+      phaseId = "extension"; // the task is done; a challenge does not send the journey back to phase 1
+    } else if (analysis.phase && analysis.phase !== phaseId) {
       phaseId = analysis.phase; // follow the student (non-linear)
       phaseAttempts = 1;
     } else if (analysis.phase_complete) {
@@ -164,8 +196,9 @@ export async function POST(req: Request) {
 
   // 4. Build MAX's prompt.
   const messages = toApiMessages([...before, { role: "student", content }]);
+  const base = await loadBasePrompt();
   const system = buildSystemPrompt({
-    base: await loadBasePrompt(),
+    base,
     task,
     lang: session.lang as Lang,
     gender: session.gender as Gender,
@@ -184,7 +217,12 @@ export async function POST(req: Request) {
         const tutorModel = await model("tutor");
         try {
           // Generous budget: the model may think before answering, and thinking counts toward max_tokens.
-          const res = llm().messages.stream({ model: tutorModel, max_tokens: 6000, system, messages });
+          // The long base instructions are the same every turn: cache them (cheaper and faster).
+          const cachedSystem = [
+            { type: "text" as const, text: base, cache_control: { type: "ephemeral" as const } },
+            { type: "text" as const, text: system.slice(base.length) },
+          ];
+          const res = llm().messages.stream({ model: tutorModel, max_tokens: 6000, system: cachedSystem, messages });
           for await (const event of res) {
             if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
               full += event.delta.text;
@@ -193,11 +231,13 @@ export async function POST(req: Request) {
           }
           const final = await res.finalMessage();
           if (final.stop_reason !== "end_turn") console.warn("MAX reply stopped early:", final.stop_reason);
+          void logUsage("tutor", tutorModel, final.usage, { sessionId: session.id });
         } catch (streamErr) {
           if (full) throw streamErr;
           // Some Bedrock accounts may not allow streaming: ask once without it.
           console.warn("Streaming failed, retrying without streaming", streamErr);
           const res = await llm().messages.create({ model: tutorModel, max_tokens: 6000, system, messages });
+          void logUsage("tutor", tutorModel, res.usage, { sessionId: session.id });
           const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
           full = text;
           controller.enqueue(encoder.encode(text));
@@ -217,6 +257,10 @@ export async function POST(req: Request) {
         scaffold_type: plan?.scaffoldType ?? null,
         move: plan?.move ?? null,
       });
+      // The student chose to finish: close the conversation.
+      if (plan?.move === "close") {
+        await db.from("sessions").update({ status: "done", ended_at: new Date().toISOString() }).eq("id", session.id);
+      }
       controller.close();
     },
   });
@@ -226,6 +270,7 @@ export async function POST(req: Request) {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
       "X-Phase": phaseId,
+      "X-Move": plan?.move ?? "",
     },
   });
 }

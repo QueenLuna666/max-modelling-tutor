@@ -44,7 +44,7 @@ export async function sendMessage(
   content: string,
   responseMs: number | null,
   onText: (soFar: string) => void,
-): Promise<{ reply: string; phase: string | null }> {
+): Promise<{ reply: string; phase: string | null; move: string | null }> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -63,5 +63,5 @@ export async function sendMessage(
     reply += decoder.decode(value, { stream: true });
     onText(reply);
   }
-  return { reply, phase: res.headers.get("X-Phase") };
+  return { reply, phase: res.headers.get("X-Phase"), move: res.headers.get("X-Move") || null };
 }

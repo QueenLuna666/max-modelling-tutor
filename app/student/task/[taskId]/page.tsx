@@ -13,7 +13,7 @@ import { MessageText } from "@/components/MessageText";
 
 type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean; pictures?: boolean };
 
-type Msg = { role: "student" | "tutor"; content: string };
+type Msg = { role: "student" | "tutor"; content: string; move?: string | null };
 type TaskInfo = StartResult["task"];
 
 const sessionKey = (taskId: string) => `max_session_${taskId}`;
@@ -119,10 +119,17 @@ export default function TaskWork() {
     setDraft("");
     try {
       const since = lastReplyAt.current ? Date.now() - lastReplyAt.current : null;
-      const { reply } = await sendMessage(sessionId, text, since, (soFar) =>
+      const { reply, move } = await sendMessage(sessionId, text, since, (soFar) =>
         setDraft(soFar),
       );
-      setMessages((m) => [...m, { role: "tutor", content: reply }]);
+      setMessages((m) => [...m, { role: "tutor", content: reply, move }]);
+      if (move === "close") {
+        // The student chose to finish: MAX closed the conversation.
+        try {
+          sessionStorage.removeItem(sessionKey(taskId));
+        } catch {}
+        setStatus("done");
+      }
       if (autoRead) speech.speak(`m-reply-${Date.now()}`, reply);
     } catch (e) {
       setError(e instanceof Error ? e.message : tr("error", me.lang));
@@ -131,7 +138,7 @@ export default function TaskWork() {
       setSending(false);
       lastReplyAt.current = Date.now();
     }
-  }, [input, sessionId, sending, status, me, autoRead, speech, dictation]);
+  }, [input, sessionId, sending, status, me, autoRead, speech, dictation, taskId]);
 
   async function finish() {
     if (!sessionId) return;
@@ -265,6 +272,20 @@ export default function TaskWork() {
           ) : (
             <WaitingBubble lang={lang} />
           )
+        )}
+        {status === "active" && !sending && draft === null && messages[messages.length - 1]?.role === "tutor" && messages[messages.length - 1]?.move === "offer_finish" && (
+          <div className="flex flex-wrap justify-center gap-3 py-1">
+            <button
+              type="button"
+              onClick={() => send(tr("finishDoneMsg", lang))}
+              className="rounded-2xl border-2 border-ok bg-mint-soft px-5 py-2.5 font-display font-semibold text-ok hover:bg-ok hover:text-white"
+            >
+              {tr("finishDone", lang)}
+            </button>
+            <button type="button" onClick={() => send(tr("challengeMeMsg", lang))} className="btn-chunky rounded-2xl bg-accent px-5 py-2.5 text-white hover:bg-accent-strong">
+              {tr("challengeMe", lang)}
+            </button>
+          </div>
         )}
         {status === "done" && (
           <div className="flex flex-col items-center rounded-3xl border-2 border-ok bg-mint-soft p-5 text-center text-ok">
