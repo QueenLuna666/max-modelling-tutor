@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { DIFFICULTIES, SKILLS, TRANSVERSAL, PHASES, codeLabel } from "./framework";
 import type { ExportSession } from "./staffData";
 import { policyTable } from "./policy";
+import { withoutDrawings } from "./messageFormat";
 import { HINT_CODE, HINT_HE as HINT_HE_LABELS } from "./hints";
 
 const LEVEL_HE: Record<string, string> = { strong: "חזק", intermediate: "ביניים", significant_difficulty: "קושי משמעותי", insufficient_evidence: "אין די ראיות" };
@@ -248,7 +249,7 @@ export async function toXlsx(sessions: ExportSession[]): Promise<Buffer> {
           no: i + 1,
           at: when(m.created_at),
           who: student ? s.name : "MAX",
-          content: m.content,
+          content: withoutDrawings(m.content, "[איור של MAX]"),
           phase: phaseName(s, student ? (a?.phase ?? m.phase) : m.phase),
           allPhases: (a?.phases ?? [])
             .map((p) => `${phaseName(s, p.phase)} (${LEVEL_HE[p.level] ?? p.level}${p.after_support ? ", אחרי תמיכה" : ""})`)

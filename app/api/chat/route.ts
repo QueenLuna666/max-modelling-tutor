@@ -10,6 +10,7 @@ import { planResponse, type Plan } from "@/lib/policy";
 import { analyzeMessage } from "@/lib/analyzer";
 import { llm, model } from "@/lib/llm";
 import { normalizeSettings } from "@/lib/classSettings";
+import { withoutDrawings } from "@/lib/messageFormat";
 
 export const maxDuration = 60;
 
@@ -72,7 +73,8 @@ export async function POST(req: Request) {
     .eq("session_id", session.id)
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
-  const before = (recentDesc ?? []).reverse();
+  // MAX's drawings are long SVG code: in the history, keep only a note that a drawing was shown.
+  const before = (recentDesc ?? []).reverse().map((r) => ({ ...r, content: withoutDrawings(r.content, "\n(a drawing was shown here)\n") }));
 
   // 1. Save the student's message first, so nothing is lost even if a model call fails.
   const wordCount = content.split(/\s+/).filter(Boolean).length;
@@ -182,7 +184,7 @@ export async function POST(req: Request) {
         const tutorModel = await model("tutor");
         try {
           // Generous budget: the model may think before answering, and thinking counts toward max_tokens.
-          const res = llm().messages.stream({ model: tutorModel, max_tokens: 3000, system, messages });
+          const res = llm().messages.stream({ model: tutorModel, max_tokens: 6000, system, messages });
           for await (const event of res) {
             if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
               full += event.delta.text;
@@ -195,7 +197,7 @@ export async function POST(req: Request) {
           if (full) throw streamErr;
           // Some Bedrock accounts may not allow streaming: ask once without it.
           console.warn("Streaming failed, retrying without streaming", streamErr);
-          const res = await llm().messages.create({ model: tutorModel, max_tokens: 3000, system, messages });
+          const res = await llm().messages.create({ model: tutorModel, max_tokens: 6000, system, messages });
           const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
           full = text;
           controller.enqueue(encoder.encode(text));

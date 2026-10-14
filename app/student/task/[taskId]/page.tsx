@@ -11,7 +11,7 @@ import { MaxMascot } from "@/components/MaxMascot";
 import { BackButton } from "@/components/BackButton";
 import { MessageText } from "@/components/MessageText";
 
-type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean };
+type Features = { readAloud: boolean; voiceInput: boolean; simpler: boolean; bigText: boolean; pictures?: boolean };
 
 type Msg = { role: "student" | "tutor"; content: string };
 type TaskInfo = StartResult["task"];
@@ -93,7 +93,7 @@ export default function TaskWork() {
     fetch(`/api/class-settings?code=${encodeURIComponent(s.classCode)}`)
       .then((r) => r.json())
       .then((d) => setFeatures(d.features))
-      .catch(() => setFeatures({ readAloud: true, voiceInput: true, simpler: true, bigText: true }));
+      .catch(() => setFeatures({ readAloud: true, voiceInput: true, simpler: true, bigText: true, pictures: true }));
   }, []);
 
   const speechLang = me?.lang ?? "he";
@@ -246,6 +246,7 @@ export default function TaskWork() {
             key={i}
             msg={m}
             youLabel={tr("you", lang)}
+            drawingLabel={tr("drawing", lang)}
             speak={
               features?.readAloud && m.role === "tutor"
                 ? {
@@ -260,7 +261,7 @@ export default function TaskWork() {
         ))}
         {draft !== null && (
           draft ? (
-            <Bubble msg={{ role: "tutor", content: draft }} youLabel="" />
+            <Bubble msg={{ role: "tutor", content: draft }} youLabel="" drawingLabel={tr("drawing", lang)} />
           ) : (
             <WaitingBubble lang={lang} />
           )
@@ -287,15 +288,29 @@ export default function TaskWork() {
           className="border-t border-line py-3"
         >
           {error && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{error}</p>}
-          {features?.simpler && messages.length > 0 && (
-            <button
-              type="button"
-              disabled={sending || !sessionId}
-              onClick={() => send(tr("simplerMsg", lang))}
-              className="mb-2 rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-            >
-              {tr("simpler", lang)}
-            </button>
+          {messages.length > 0 && (features?.simpler || features?.pictures) && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {features?.simpler && (
+                <button
+                  type="button"
+                  disabled={sending || !sessionId}
+                  onClick={() => send(tr("simplerMsg", lang))}
+                  className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                >
+                  {tr("simpler", lang)}
+                </button>
+              )}
+              {features?.pictures !== false && (
+                <button
+                  type="button"
+                  disabled={sending || !sessionId}
+                  onClick={() => send(tr("pictureMsg", lang))}
+                  className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                >
+                  {tr("picture", lang)}
+                </button>
+              )}
+            </div>
           )}
           {dictation.listening && <p className="mb-1 text-sm font-medium text-accent">🎙️ {tr("listening", lang)}</p>}
           {micNote && <p className="mb-1 text-xs text-warn">{micNote}</p>}
@@ -394,7 +409,7 @@ function WaitingBubble({ lang }: { lang: "he" | "ar" }) {
 
 type SpeakCtl = { active: boolean; toggle: () => void; label: string; stopLabel: string };
 
-function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string; pending?: boolean; speak?: SpeakCtl }) {
+function Bubble({ msg, youLabel, pending, speak, drawingLabel }: { msg: Msg; youLabel: string; pending?: boolean; speak?: SpeakCtl; drawingLabel?: string }) {
   const mine = msg.role === "student";
   return (
     <div className={`flex items-end gap-2 ${mine ? "justify-start" : "flex-row-reverse justify-start"}`}>
@@ -408,7 +423,7 @@ function Bubble({ msg, youLabel, pending, speak }: { msg: Msg; youLabel: string;
           {mine ? youLabel : "MAX"}
           {speak && <SpeakButton small active={speak.active} onClick={speak.toggle} label={speak.label} stopLabel={speak.stopLabel} />}
         </span>
-        <MessageText text={msg.content} />
+        <MessageText text={msg.content} drawingLabel={drawingLabel} />
       </div>
     </div>
   );

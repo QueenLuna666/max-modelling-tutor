@@ -10,7 +10,10 @@ const MIC_LANG = { he: "he-IL", ar: "ar-IL", en: "en-US" } as const;
 type L = keyof typeof SPEECH_LANG;
 
 function clean(text: string) {
-  return text.replace(/\*\*/g, "").replace(/[👋✨🤔📷]/gu, "");
+  return text
+    .replace(/```svg[\s\S]*?(```|$)/g, " ") // drawings are not read aloud
+    .replace(/\*\*/g, "")
+    .replace(/[👋✨🤔📷🖼️]/gu, "");
 }
 
 export function useSpeech(lang: L) {
